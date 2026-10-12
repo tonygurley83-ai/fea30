@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">FEA Client</string>
+    <string name="title_activity_main">FEA Client</string>
+    <string name="package_name">com.emps.feaclient</string>
+    <string name="custom_url_scheme">com.emps.feaclient</string>
+</resources>

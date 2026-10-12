@@ -1,0 +1,89 @@
+const repository =
+  require(
+    "../repositories/CanvasRepository"
+  );
+
+async function createCanvas(
+  userId,
+  data
+) {
+
+  if (!data.name?.trim()) {
+
+    throw new Error(
+      "Canvas name required"
+    );
+
+  }
+
+  return repository.create(
+    userId,
+    {
+      ...data,
+      name: data.name.trim()
+    }
+  );
+
+}
+
+async function updateCanvas(
+  userId,
+  canvasId,
+  data
+) {
+
+  if (
+    data.name !== undefined &&
+    !data.name.trim()
+  ) {
+
+    throw new Error(
+      "Canvas name required"
+    );
+
+  }
+
+  return repository.update(
+    userId,
+    canvasId,
+    {
+      ...data,
+      name:
+        data.name?.trim()
+    }
+  );
+
+}
+
+async function shareCanvas(
+  userId,
+  canvasId,
+  projectIds
+) {
+
+  return repository.share(
+    userId,
+    canvasId,
+    projectIds
+  );
+
+}
+
+async function deleteCanvas(
+  userId,
+  canvasId
+) {
+
+  return repository.delete(
+    userId,
+    canvasId
+  );
+
+}
+
+module.exports = {
+  createCanvas,
+  updateCanvas,
+  shareCanvas,
+  deleteCanvas
+};

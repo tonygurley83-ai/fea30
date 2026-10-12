@@ -1,0 +1,120 @@
+import React, { useEffect, useState } from "react";
+import apiClient from "./apiClient";
+import mirror from "./MirrorClient";
+import ProjectSidebar from "./Projects/ProjectSidebar";
+
+function FEAMain() {
+  const [user, setUser] = useState(null);
+  const [projects, setProjects] = useState([]);
+  const [personalCanvases, setPersonalCanvases] = useState([]);
+  const [sharedCanvases, setSharedCanvases] = useState([]);
+  const [selectedId, setSelectedId] = useState(null);
+  const [selectedCanvasId, setSelectedCanvasId] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    initialize();
+  }, []);
+
+  async function initialize() {
+    try {
+      setLoading(true);
+
+      const currentUser = await apiClient("/auth/me");
+      setUser(currentUser);
+      localStorage.setItem("user", JSON.stringify(currentUser));
+
+      await refreshSession(currentUser);
+    } catch (err) {
+      console.error("[SESSION INIT]", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function refreshSession(activeUser = user) {
+    try {
+      const [projectsData, personalData, sharedData] = await Promise.all([
+        apiClient("/auth/projects"),
+        apiClient("/auth/canvases/personal"),
+        apiClient("/auth/canvases/shared")
+      ]);
+
+      const projectsWithCanvases = await Promise.all(
+        (projectsData || []).map(async (project) => {
+          const canvases = await apiClient(`/auth/canvases/project/${project.id}`);
+          return { ...project, canvases: canvases || [] };
+        })
+      );
+
+      const currentUserId = activeUser?.id;
+
+      // STRICT FRONTEND ISOLATION:
+      // 1. Personal = Owned by current user AND project_id is null/empty
+      const strictPersonal = (personalData || []).filter((canvas) => {
+        const hasProject = Boolean(canvas.project_id || canvas.projectId);
+        const ownerId = canvas.owner_id || canvas.ownerId;
+        return !hasProject && (!currentUserId || ownerId === currentUserId);
+      });
+
+      // 2. Shared = Owned by a different user
+      const strictShared = (sharedData || []).filter((canvas) => {
+        const ownerId = canvas.owner_id || canvas.ownerId;
+        return currentUserId ? ownerId !== currentUserId : true;
+      });
+
+      setProjects(projectsWithCanvases);
+      setPersonalCanvases(strictPersonal);
+      setSharedCanvases(strictShared);
+    } catch (err) {
+      console.error("[REFRESH]", err);
+    }
+  }
+
+  async function deleteCanvas(canvasTarget) {
+    const canvasId = typeof canvasTarget === "object" ? canvasTarget?.id : canvasTarget;
+    const canvasName = typeof canvasTarget === "object" ? canvasTarget?.name : "this canvas";
+
+    if (!canvasId) return;
+
+    if (!window.confirm(`Delete "${canvasName}"?`)) {
+      return;
+    }
+
+    try {
+      await apiClient(`/auth/canvases/${canvasId}`, {
+        method: "DELETE"
+      });
+
+      if (selectedCanvasId === canvasId) {
+        setSelectedCanvasId(null);
+      }
+
+      await refreshSession();
+    } catch (err) {
+      console.error("Canvas Delete Failed", err);
+    }
+  }
+
+  if (loading) {
+    return <div style={{ padding: 20 }}>Loading...</div>;
+  }
+
+  return (
+    <ProjectSidebar
+      user={user}
+      projects={projects}
+      personalCanvases={personalCanvases}
+      sharedCanvases={sharedCanvases}
+      selectedProjectId={selectedId}
+      selectedCanvasId={selectedCanvasId}
+      onProjectSelected={(proj) => setSelectedId(proj.id)}
+      onProjectCanvasSelected={(c) => setSelectedCanvasId(c.id)}
+      onPersonalCanvasSelected={(c) => setSelectedCanvasId(c.id)}
+      onSharedCanvasSelected={(c) => setSelectedCanvasId(c.id)}
+      onDeleteCanvas={deleteCanvas}
+    />
+  );
+}
+
+export default FEAMain;

@@ -1,0 +1,9 @@
+GET /api/me
+GET /api/user
+GET /api/user/:userId
+GET /api/user/:userId/projects
+GET /api/projects
+GET /api/projects/:projectId
+GET /api/projects/:projectId/canvases
+GET /api/canvases
+GET /api/canvases/:canvas_id

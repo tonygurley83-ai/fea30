@@ -1,0 +1,83 @@
+function createRenderableElement(element) {
+  const base = {
+    id: element.id,
+    type: element.type,
+    name: element.name,
+    x: element.x,
+    y: element.y,
+    visible: element.visible !== false,
+    locked: element.locked === true,
+    sortOrder: element.sortOrder ?? 0
+  };
+
+  if (element.type === "polygon") {
+    return {
+      ...base,
+      color: element.data?.color ?? "#4da3ff",
+      points: element.data?.points ?? []
+    };
+  }
+
+  if (element.type === "rectangle") {
+    return {
+      ...base,
+      color: element.data?.color ?? "#d989ff",
+      width: element.data?.width ?? 120,
+      height: element.data?.height ?? 75
+    };
+  }
+
+  if (element.type === "circle") {
+    return {
+      ...base,
+      color: element.data?.color ?? "#7ee787",
+      radius: element.data?.radius ?? 45
+    };
+  }
+
+  if (element.type === "node") {
+    return {
+      ...base,
+      color: element.data?.color ?? "#ffcf5a",
+      radius: element.data?.radius ?? 7
+    };
+  }
+
+  if (element.type === "line") {
+    return {
+      ...base,
+      color: element.data?.color ?? "#ff8d6a",
+      x2: element.data?.x2 ?? element.x,
+      y2: element.data?.y2 ?? element.y
+    };
+  }
+
+  return {
+    ...base,
+    type: "unknown"
+  };
+}
+
+export function renderCanvas(project, canvas) {
+  const elements = Array.isArray(canvas?.elements)
+    ? canvas.elements
+    : [];
+
+  return {
+    projectId: project.id,
+
+    projectName: project.name ?? "Untitled Project",
+
+    version: canvas?.version ?? 1,
+
+    settings: {
+      gridSize: canvas?.settings?.gridSize ?? 25,
+      snapEnabled: canvas?.settings?.snapEnabled ?? true
+    },
+
+    elements: elements
+      .filter((element) => element?.id && element?.type)
+      .map(createRenderableElement)
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+  };
+}

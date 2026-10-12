@@ -1,0 +1,5 @@
+{
+  "appId": "com.emps.feaclient",
+  "appName": "FEA Client",
+  "webDir": "dist"
+}

@@ -1,0 +1,447 @@
+import React, {
+  useEffect,
+  useRef,
+  useState
+} from "react";
+
+import {
+  Stage,
+  Layer,
+  Rect,
+  Circle,
+  Text,
+  Group
+} from "react-konva";
+
+import TruncatedOctaGrid
+from "./grid/TruncatedOctaGrid";
+
+function CanvasManager({
+  canvas,
+  onCanvasChange,
+  selectedNodeId,
+  onNodeSelected
+}) {
+  const containerRef = useRef(null);
+
+  const [dimensions, setDimensions] =
+    useState({
+      width: 1,
+      height: 1
+    });
+
+  useEffect(() => {
+    const container =
+      containerRef.current;
+
+    if (!container) {
+      return undefined;
+    }
+
+    const updateDimensions = () => {
+      const {
+        width,
+        height
+      } = 
+container.getBoundingClientRect();
+
+      setDimensions({
+        width: Math.max(
+          1,
+          Math.floor(width)
+        ),
+        height: Math.max(
+          1,
+          Math.floor(height)
+        )
+      });
+    };
+
+    updateDimensions();
+
+    const observer =
+      new ResizeObserver(
+        updateDimensions
+      );
+
+    observer.observe(container);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  if (!canvas) {
+    return null;
+  }
+
+  const nodes = canvas.nodes ?? [];
+
+  const layers = Array.isArray(
+    canvas.layers
+  )
+    ? canvas.layers
+    : [];
+
+  const grid = canvas.grid ?? {};
+
+  const gridSize =
+    Number.isFinite(grid.size) &&
+    grid.size > 0
+      ? grid.size
+      : 40;
+
+  const gridVisible =
+    grid.visible !== false &&
+    grid.enabled !== false;
+
+  const snapEnabled =
+    grid.snap !== false &&
+    grid.enabled !== false;
+
+  function getLayer(node) {
+    if (!node?.layerId) {
+      return null;
+    }
+
+    return (
+      layers.find(
+        (layer) =>
+          layer.id === node.layerId
+      ) ?? null
+    );
+  }
+
+  function isNodeVisible(node) {
+    const layer = getLayer(node);
+
+    return layer?.visible !== false;
+  }
+
+  function isNodeLocked(node) {
+    const layer = getLayer(node);
+
+    return layer?.locked === true;
+  }
+
+  function getDefaultLayerId() {
+    return (
+      layers.find(
+        (layer) =>
+          layer.visible !== false &&
+          layer.locked !== true
+      )?.id ?? null
+    );
+  }
+
+  function snapToGrid(
+    x,
+    y,
+    cellSize = gridSize
+  ) {
+    const row = Math.round(
+      y / cellSize
+    );
+
+    const offset =
+      row % 2 === 0
+        ? 0
+        : cellSize / 2;
+
+    return {
+      x:
+        Math.round(
+          (x - offset) / cellSize
+        ) *
+          cellSize +
+        offset,
+
+      y: row * cellSize
+    };
+  }
+
+  function updateNode(id, updates) {
+    const updatedCanvas = {
+      ...canvas,
+      nodes: nodes.map((node) =>
+        node.id === id
+          ? {
+              ...node,
+              ...updates
+            }
+          : node
+      )
+    };
+
+    onCanvasChange?.(updatedCanvas);
+  }
+
+  function handleDragEnd(nodeId) {
+    return (event) => {
+      const position = {
+        x: event.target.x(),
+        y: event.target.y()
+      };
+
+      const updates = snapEnabled
+        ? snapToGrid(
+            position.x,
+            position.y
+          )
+        : position;
+
+      updateNode(nodeId, updates);
+    };
+  }
+
+  function handleNodeSelected(nodeId) {
+    onNodeSelected?.(nodeId);
+  }
+
+  function addNode(node) {
+    const updatedCanvas = {
+      ...canvas,
+      nodes: [
+        ...nodes,
+        {
+          ...node,
+          layerId:
+            node.layerId ??
+            getDefaultLayerId()
+        }
+      ]
+    };
+
+    onCanvasChange?.(updatedCanvas);
+  }
+
+  function addRectangle() {
+    addNode({
+      id: `rect_${Date.now()}`,
+      type: "rect",
+      x: 100,
+      y: 100,
+      width: 140,
+      height: 100,
+      fill: "#0F766E"
+    });
+  }
+
+  function addCircle() {
+    addNode({
+      id: `circle_${Date.now()}`,
+      type: "circle",
+      x: 250,
+      y: 150,
+      radius: 50,
+      fill: "#D97706"
+    });
+  }
+
+  function addNote() {
+    addNode({
+      id: `note_${Date.now()}`,
+      type: "note",
+      x: 150,
+      y: 150,
+      width: 220,
+      height: 140,
+      fill: "#FEF08A",
+      text: "New Note"
+    });
+  }
+
+  function getNodeEventProps(node) {
+    return {
+      draggable: !isNodeLocked(node),
+
+      onClick: () =>
+        handleNodeSelected(node.id),
+
+      onTap: () =>
+        handleNodeSelected(node.id),
+
+      onDragEnd: handleDragEnd(node.id)
+    };
+  }
+
+  function getSelectionProps(node) {
+    const selected =
+      node.id === selectedNodeId;
+
+    return {
+      stroke: selected
+        ? "#2563EB"
+        : undefined,
+
+      strokeWidth: selected ? 3 : 0
+    };
+  }
+
+  function renderNode(node) {
+    if (!isNodeVisible(node)) {
+      return null;
+    }
+
+    const eventProps =
+      getNodeEventProps(node);
+
+    const selectionProps =
+      getSelectionProps(node);
+
+    if (node.type === "circle") {
+      return (
+        <Circle
+          key={node.id}
+          x={node.x}
+          y={node.y}
+          radius={node.radius ?? 50}
+          fill={node.fill ?? "#D97706"}
+          {...selectionProps}
+          {...eventProps}
+        />
+      );
+    }
+
+    if (node.type === "note") {
+      return (
+        <Group
+          key={node.id}
+          x={node.x}
+          y={node.y}
+          {...eventProps}
+        >
+          <Rect
+            width={node.width ?? 220}
+            height={node.height ?? 140}
+            fill={node.fill ?? "#FEF08A"}
+            {...selectionProps}
+          />
+
+          <Text
+            x={10}
+            y={10}
+            width={
+              Math.max(
+                0,
+                (node.width ?? 220) - 20
+              )
+            }
+            height={
+              Math.max(
+                0,
+                (node.height ?? 140) - 20
+              )
+            }
+            text={node.text ?? ""}
+            fontSize={16}
+            fill="#1F2937"
+            wrap="word"
+          />
+        </Group>
+      );
+    }
+
+    return (
+      <Rect
+        key={node.id}
+        x={node.x}
+        y={node.y}
+        width={node.width ?? 140}
+        height={node.height ?? 100}
+        fill={node.fill ?? "#0F766E"}
+        {...selectionProps}
+        {...eventProps}
+      />
+    );
+  }
+
+  return (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        minHeight: 0,
+        display: "flex",
+        flexDirection: "column"
+      }}
+    >
+      <div
+        style={{
+          padding: 8,
+          borderBottom:
+            "1px solid #ddd",
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 8,
+          flex: "0 0 auto"
+        }}
+      >
+        <button
+          type="button"
+          onClick={addRectangle}
+        >
+          Rectangle
+        </button>
+
+        <button
+          type="button"
+          onClick={addCircle}
+        >
+          Circle
+        </button>
+
+        <button
+          type="button"
+          onClick={addNote}
+        >
+          Note
+        </button>
+      </div>
+
+      <div
+        ref={containerRef}
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflow: "hidden",
+          background: "#F8FAFC"
+        }}
+      >
+        <Stage
+          width={dimensions.width}
+          height={dimensions.height}
+          onClick={(event) => {
+            if (
+              event.target ===
+              event.target.getStage()
+            ) {
+              onNodeSelected?.(null);
+            }
+          }}
+          onTap={(event) => {
+            if (
+              event.target ===
+              event.target.getStage()
+            ) {
+              onNodeSelected?.(null);
+            }
+          }}
+        >
+          <Layer>
+            <TruncatedOctaGrid
+              width={dimensions.width}
+              height={dimensions.height}
+              cellSize={gridSize}
+              visible={gridVisible}
+            />
+
+            {nodes.map(renderNode)}
+          </Layer>
+        </Stage>
+      </div>
+    </div>
+  );
+}
+
+export default CanvasManager;

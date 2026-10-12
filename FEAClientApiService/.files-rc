@@ -1,0 +1,20 @@
+feaclient_server/src
+CanvasManager.jsx
+DefaultProject.jsx
+MasterManager.jsx
+MirrorClient.js
+index js
+index.erudatest.js
+
+FEAManagementService/src
+CanvasRenderer.jsx
+CanvasRenderEngine.jsx
+FEAMain.jsx
+ProjectManager.jsx
+Components/FEASolver.jsx
+
+FEAClientApiService 
+server.js
+routes
+api
+/src

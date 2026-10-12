@@ -1,0 +1,154 @@
+const router =
+  require("express").Router();
+
+const passport =
+  require("passport");
+
+const AuthService =
+  require(
+    "../services/AuthService"
+  );
+
+/*
+ * GOOGLE LOGIN
+ */
+
+router.get(
+  "/auth/google",
+
+  passport.authenticate(
+    "google",
+    {
+      scope: [
+        "profile",
+        "email"
+      ],
+      session: false
+    }
+  )
+);
+
+/*
+ * GOOGLE CALLBACK
+ */
+
+router.get(
+
+  "/auth/google/callback",
+
+  passport.authenticate(
+    "google",
+    {
+      failureRedirect:
+        "/login",
+
+      session: false
+    }
+  ),
+
+  (req, res) => {
+
+    console.log(
+      "[AUTH] Google login success:",
+      req.user?.email
+    );
+
+    console.log(
+      "[AUTH] req.user:",
+      JSON.stringify(
+        req.user,
+        null,
+        2
+      )
+    );
+
+
+    const token =
+      AuthService.createToken(
+        req.user
+      );
+
+    res.redirect(
+
+      `http://localhost:3000/login-success?token=${token}`
+
+    );
+
+  }
+
+);
+
+/*
+ * MICROSOFT LOGIN
+ */
+
+router.get(
+
+  "/auth/microsoft",
+
+  passport.authenticate(
+    "microsoft",
+    {
+      session: false
+    }
+  )
+
+);
+
+/*
+ * MICROSOFT CALLBACK
+ */
+
+router.get(
+
+  "/auth/microsoft/callback",
+
+  passport.authenticate(
+    "microsoft",
+    {
+      failureRedirect:
+        "/login",
+
+      session: false
+    }
+  ),
+
+  (req, res) => {
+
+    console.log(
+      "[AUTH] Microsoft login success:",
+      req.user?.email
+    );
+
+    const token =
+      AuthService.createToken(
+        req.user
+      );
+
+    res.redirect(
+
+      `http://localhost:3000/login-success?token=${token}`
+
+    );
+
+  }
+
+);
+
+/*
+ * DEBUG
+ */
+
+router.get(
+  "/auth/debug",
+  (req, res) => {
+
+    res.json({
+      working: true
+    });
+
+  }
+);
+
+module.exports =
+  router;

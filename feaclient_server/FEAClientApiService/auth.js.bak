@@ -1,0 +1,129 @@
+const router =
+  require("express").Router();
+
+const passport =
+  require("passport");
+
+const jwt =
+  require("jsonwebtoken");
+
+const user =
+  require("../data/user");
+router.get(
+
+  "/auth/google",
+
+  passport.authenticate(
+    "google",
+    {
+      scope: [
+        "profile",
+        "email"
+      ]
+    }
+  )
+
+);
+
+router.get(
+
+  "/auth/google/callback",
+
+  passport.authenticate(
+    "google",
+    {
+      failureRedirect:
+        "/login"
+    }
+  ),
+
+  (req, res) => {
+
+    console.log(
+      "[AUTH] Google login success:",
+      req.user?.email
+    );
+
+    const token =
+      jwt.sign(
+
+        {
+          id: req.user.id,
+          email: req.user.email
+        },
+
+        process.env.JWT_SECRET,
+
+        {
+          expiresIn: "7d"
+        }
+
+      );
+
+    res.redirect(
+      `http://localhost:3000/login-success?token=${token}`
+    );
+
+
+  }
+
+);
+
+router.get(
+  "/auth/me",
+  (req, res) => {
+
+    res.json({
+
+      authenticated:
+        req.isAuthenticated
+          ? req.isAuthenticated()
+          : false,
+
+      user:
+        req.user || null
+
+    });
+
+  }
+);
+
+router.get(
+  "/auth/logout",
+  (req, res, next) => {
+
+    req.logout(
+      err => {
+
+        if (err) {
+          return next(err);
+        }
+
+        req.session.destroy(
+          () => {
+
+            res.json({
+              success: true
+            });
+
+          }
+        );
+
+      }
+    );
+
+  }
+);
+
+router.get(
+  "/auth/debug",
+  (req, res) => {
+
+    res.json({
+      working: true
+    });
+
+  }
+);
+	
+module.exports = router;

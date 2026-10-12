@@ -1,0 +1,91 @@
+const db =
+  require("../egg/postgres");
+
+async function create(
+  userId,
+  data
+) {
+
+  const result =
+    await db.execute(
+      "spCanvas_Create",
+      {
+        UserId: userId,
+        Name: data.name,
+        CanvasData:
+          JSON.stringify(
+            data.canvasData
+          )
+      }
+    );
+
+  return result[0];
+
+}
+
+async function update(
+  userId,
+  canvasId,
+  data
+) {
+
+  const result =
+    await db.execute(
+      "spCanvas_Update",
+      {
+        UserId: userId,
+        CanvasId: canvasId,
+        Name: data.name,
+        CanvasData:
+          JSON.stringify(
+            data.canvasData
+          )
+      }
+    );
+
+  return result[0];
+
+}
+
+async function share(
+  userId,
+  canvasId,
+  projectIds
+) {
+
+  return db.execute(
+    "spCanvas_Share",
+    {
+      UserId: userId,
+      CanvasId: canvasId,
+      ProjectIds:
+        JSON.stringify(
+          projectIds
+        )
+    }
+  );
+
+}
+
+async function remove(
+  userId,
+  canvasId
+) {
+
+  return db.execute(
+    "spCanvas_Delete",
+    {
+      UserId: userId,
+      CanvasId: canvasId
+    }
+  );
+
+}
+
+module.exports = {
+  create,
+  update,
+  share,
+  delete: remove
+};
+

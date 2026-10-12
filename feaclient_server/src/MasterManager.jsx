@@ -1,0 +1,570 @@
+import React,
+{
+  useEffect,
+  useState
+}
+from "react";
+
+import mirror
+from "./MirrorClient";
+
+import CanvasManager
+from "./CanvasManager";
+
+import NullProject
+from "./NullProject";
+
+import NullCanvas
+from "./NullCanvas";
+
+import HistoryManager
+from "./HistoryManager";
+
+import ClipboardManager
+from "./ClipboardManager";
+
+import LoginPage
+from "./LoginPage";
+
+import FEAMain
+from "./FEAMain";
+
+import CanvasToolbar
+from "../FEAClient/src/CanvasToolbar";
+
+import LayersPanel
+from "../FEAClient/src/LayersPanel";
+
+import PropertiesPanel
+from "../FEAClient/src/PropertiesPanel";
+
+import {
+  renderCanvas
+}
+from "../FEAClient/src/CanvasRenderEngine";
+
+function MasterManager() {
+
+  const [project,
+    setProject] =
+      useState(NullProject);
+  
+  const [canvas,
+    setCanvas] =
+      useState(NullCanvas);
+
+  const [selectedNodeId,
+    setSelectedNodeId] =
+      useState(null);
+
+  const [lastSaved,
+    setLastSaved] =
+      useState(null);
+
+  const [authenticated,
+    setAuthenticated] =
+      useState(false);
+
+  const [authLoading,
+    setAuthLoading] =
+      useState(true);
+
+  function getAuthHeaders() {
+
+    const token =
+      localStorage.getItem(
+        "jwt"
+      );
+
+    const headers = {
+
+      "Content-Type":
+        "application/json"
+
+    };
+
+    if (token) {
+
+      headers.Authorization =
+        `Bearer ${token}`;
+
+    }
+
+    return headers;
+
+  }
+
+  const selectedNode =
+
+    canvas?.nodes?.find(
+
+      node =>
+
+        node.id ===
+        selectedNodeId
+
+    );
+
+  useEffect(() => {
+
+    const unsubscribe =
+      mirror.subscribe(
+
+        "PROJECT_CHANGED",
+
+        message => {
+
+          if (
+            !message?.project
+          ) {
+            return;
+          }
+
+          setProject(
+            message.project
+          );
+
+        }
+
+      );
+
+    return unsubscribe;
+
+  }, []);
+
+  useEffect(() => {
+
+    async function checkAuth() {
+
+      try {
+
+        const token =
+          localStorage.getItem(
+            "jwt"
+          );
+
+        if (!token) {
+
+          setAuthenticated(
+            false
+          );
+
+          return;
+
+        }
+
+        const response =
+          await fetch(
+
+            "/auth/user",
+
+            {
+              headers:
+                getAuthHeaders()
+            }
+
+          );
+
+        setAuthenticated(
+          response.ok
+        );
+
+      }
+      catch (error) {
+
+        console.error(
+          "Auth Check Failed",
+          error
+        );
+
+        setAuthenticated(
+          false
+        );
+
+      }
+      finally {
+
+        setAuthLoading(
+          false
+        );
+
+      }
+
+    }
+
+    checkAuth();
+
+  }, []);
+
+  useEffect(() => {
+
+    async function loadCanvas() {
+
+      if (
+        !project?.activeCanvasId
+      ) {
+        return;
+      }
+
+      try {
+
+        const response =
+          await fetch(
+
+            `/auth/canvases/${project.activeCanvasId}`,
+
+            {
+              headers:
+                getAuthHeaders()
+            }
+
+          );
+
+        console.log(
+          "[CANVAS STATUS]",
+          response.status
+        );
+
+        if (
+          response.status === 401
+        ) {
+
+          setAuthenticated(
+            false
+          );
+
+          return;
+
+        }
+
+        if (!response.ok) {
+
+          throw new Error(
+            `HTTP ${response.status}`
+          );
+
+        }
+
+        const canvasData =
+          await response.json();
+
+        const renderedCanvas =
+          renderCanvas(
+            project,
+            canvasData
+          );
+
+        setCanvas(
+          renderedCanvas
+        );
+
+      }
+      catch (error) {
+
+        console.error(
+          "Canvas Load Failed",
+          error
+        );
+
+      }
+
+    }
+
+    loadCanvas();
+
+  }, [project]);
+
+  const handleCanvasChange =
+    updatedCanvas => {
+
+      if (canvas) {
+
+        HistoryManager.save(
+          canvas
+        );
+
+      }
+
+      setCanvas(
+        updatedCanvas
+      );
+
+    };
+
+  const undoCanvas =
+    () => {
+
+      const previous =
+        HistoryManager.undo(
+          canvas
+        );
+
+      setCanvas(
+        previous
+      );
+
+    };
+
+  const redoCanvas =
+    () => {
+
+      const next =
+        HistoryManager.redo(
+          canvas
+        );
+
+      setCanvas(
+        next
+      );
+
+    };
+
+  const saveCanvas = async () => {
+
+    HistoryManager.save(canvas);
+
+    setLastSaved(
+      new Date()
+    );
+
+  };
+
+  const copyNode = () => {
+
+    if (!selectedNode) {
+      return;
+    }
+
+    ClipboardManager.copy(
+      selectedNode
+    );
+
+  };
+
+  const pasteNode = () => {
+
+    const pastedNode =
+      ClipboardManager.paste();
+
+    if (!pastedNode) {
+      return;
+    }
+
+    const clonedNode = {
+      ...pastedNode,
+      id: `${pastedNode.id}_${Date.now()}`
+    };
+
+    handleCanvasChange({
+      ...canvas,
+      nodes: [
+        ...(canvas.nodes || []),
+        clonedNode
+      ]
+    });
+
+  };
+
+  const shareProject = () => {
+
+    mirror.publish({
+      type: "PROJECT_SHARE_REQUEST",
+      project
+    });
+
+  };
+
+
+    useEffect(() => {
+
+      if (!canvas) {
+        return;
+      }
+
+      const timer =
+        setInterval(
+          saveCanvas,
+          30000
+        );
+
+      return () =>
+        clearInterval(
+          timer
+        );
+
+    }, [canvas]);
+
+    if (authLoading) {
+
+      return (
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "100vh"
+          }}
+        >
+
+        Loading...
+
+      </div>
+
+    );
+
+  }
+
+  if (!authenticated) {
+
+    return (
+      <LoginPage />
+    );
+
+  }
+
+  return (
+
+    <div
+      style={{
+        display: "flex",
+        height: "100vh",
+        overflow: "hidden"
+      }}
+    >
+
+      <div
+        style={{
+          width: 260,
+          minWidth: 260,
+          display: "flex",
+          flexDirection: "column",
+          borderRight:
+            "1px solid #ddd"
+        }}
+      >
+
+        <FEAMain />
+
+        <LayersPanel
+          layers={
+            canvas?.layers || []
+          }
+        />
+
+      </div>
+
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          display: "flex",
+          flexDirection: "column"
+        }}
+      >
+
+        {canvas && (
+
+          <CanvasToolbar
+
+            canvas={canvas}
+
+            onUndo={
+              undoCanvas
+            }
+
+            onRedo={
+              redoCanvas
+            }
+
+            onCopy={
+              copyNode
+            }
+
+            onPaste={
+              pasteNode
+            }
+
+            onSave={
+              saveCanvas
+            }
+
+            onShare={
+              shareProject
+            }
+
+          />
+
+        )}
+
+        {lastSaved && (
+
+          <div
+            style={{
+              padding:
+                "8px 16px",
+              background:
+                "#F0FDF4",
+              color:
+                "#166534",
+              borderBottom:
+                "1px solid #D1FAE5"
+            }}
+          >
+
+            Last Saved:{" "}
+            {lastSaved.toLocaleTimeString()}
+
+          </div>
+
+        )}
+
+        <div
+          style={{
+            flex: 1,
+            overflow: "auto",
+            background:
+              "#F8FAFC"
+          }}
+        >
+
+          {canvas && (
+
+            <CanvasManager
+
+              canvas={canvas}
+
+              onCanvasChange={
+                handleCanvasChange
+              }
+
+              selectedNodeId={
+                selectedNodeId
+              }
+
+              onNodeSelected={
+                setSelectedNodeId
+              }
+
+            />
+
+          )}
+
+        </div>
+
+      </div>
+
+      <PropertiesPanel
+        selectedNode={
+          selectedNode
+        }
+      />
+
+    </div>
+
+  );
+
+}
+
+export default MasterManager;
+

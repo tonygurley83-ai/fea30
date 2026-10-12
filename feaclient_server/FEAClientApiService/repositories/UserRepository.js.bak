@@ -1,0 +1,157 @@
+const db =
+  require("../server/egg/postgres");
+
+class UserRepository {
+
+  async findById(
+    userId
+  ) {
+
+    const result =
+      await db.query(
+        `
+        SELECT *
+        FROM find_user_by_id(
+          $1
+        )
+        `,
+        [userId]
+      );
+
+    return result.rows[0];
+  }
+
+  async findByEmail(
+    email
+  ) {
+
+    const result =
+      await db.query(
+        `
+        SELECT *
+        FROM find_user_by_email(
+          $1
+        )
+        `,
+        [email]
+      );
+
+    return result.rows[0];
+  }
+
+  async findByIdentityHash(
+    identityHash
+  ) {
+
+    const result =
+      await db.query(
+        `
+        SELECT *
+        FROM find_user_by_identity_hash(
+          $1
+        )
+        `,
+        [identityHash]
+      );
+
+    return result.rows[0];
+  }
+
+  async findIdentity(
+    provider,
+    providerUserId
+  ) {
+
+    const result =
+      await db.query(
+        `
+        SELECT *
+        FROM find_identity(
+          $1,
+          $2
+        )
+        `,
+        [
+          provider,
+          providerUserId
+        ]
+      );
+
+    return result.rows[0];
+  }
+
+  async createUser(
+    user
+  ) {
+
+    const result =
+      await db.query(
+        `
+        SELECT *
+        FROM create_user(
+          $1,
+          $2,
+          $3,
+          $4,
+          $5
+        )
+        `,
+        [
+          user.id,
+          user.email,
+          user.displayName,
+          user.role,
+          user.identityHash
+        ]
+      );
+
+    return result.rows[0];
+  }
+
+  async createIdentity(
+    identity
+  ) {
+
+    const result =
+      await db.query(
+        `
+        SELECT *
+        FROM create_user_identity(
+          $1,
+          $2,
+          $3,
+          $4,
+          $5
+        )
+        `,
+        [
+          identity.id,
+          identity.userId,
+          identity.provider,
+          identity.providerUserId,
+          identity.providerEmail
+        ]
+      );
+
+    return result.rows[0];
+  }
+
+  async updateLastLogin(
+    userId
+  ) {
+
+    await db.query(
+      `
+      SELECT update_last_login(
+        $1
+      )
+      `,
+      [userId]
+    );
+
+  }
+
+}
+
+module.exports =
+  new UserRepository();

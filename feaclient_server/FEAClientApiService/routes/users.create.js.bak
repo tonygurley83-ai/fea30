@@ -1,0 +1,313 @@
+const router =
+  require("express").Router();
+
+const requireAuth =
+  require("../middleware/requireAuth");
+
+const ProjectService =
+  require("../services/ProjectService");
+
+const AuthService =
+  require("../services/AuthService");
+
+const UserRepository =
+  require("../repositories/UserRepository");
+
+function isAuthorized(
+  req,
+  res
+) {
+
+  const authenticatedUserId =
+    req.user.userId ||
+    req.user.id;
+
+  if (
+    req.params.userId !==
+    authenticatedUserId
+  ) {
+
+    res.status(403).json({
+      error: "Forbidden"
+    });
+
+    return false;
+
+  }
+
+  return true;
+
+}
+
+/*
+ * Get current user
+ */
+router.get(
+  "/auth/user",
+  requireAuth,
+  async (req, res) => {
+
+    try {
+
+      const user =
+        await UserRepository
+          .findById(
+            req.user.userId ||
+            req.user.id
+          );
+
+      res.json(user);
+
+    }
+    catch (err) {
+
+      res.status(500).json({
+        error: err.message
+      });
+
+    }
+
+  }
+);
+
+/*
+ * Create user
+ */
+router.post(
+  "/auth/user",
+  async (req, res) => {
+
+    try {
+
+      const user =
+        await AuthService
+          .createUser(
+            req.body
+          );
+
+      res
+        .status(201)
+        .json(user);
+
+    }
+    catch (err) {
+
+      console.error(err);
+
+      res.status(500).json({
+        error: err.message
+      });
+
+    }
+
+  }
+);
+
+/*
+ * Get user projects
+ */
+router.get(
+  "/auth/user/:userId/projects",
+  requireAuth,
+  async (req, res) => {
+
+    if (!isAuthorized(req, res)) {
+      return;
+    }
+
+    try {
+
+      const projects =
+        await ProjectService
+          .getProjects(
+            req.params.userId
+          );
+
+      res.json(projects);
+
+    }
+    catch (err) {
+
+      res.status(500).json({
+        error: err.message
+      });
+
+    }
+
+  }
+);
+
+/*
+ * Get project
+ */
+router.get(
+  "/auth/user/:userId/projects/:projectId",
+  requireAuth,
+  async (req, res) => {
+
+    if (!isAuthorized(req, res)) {
+      return;
+    }
+
+    try {
+
+      const project =
+        await ProjectService
+          .getProject(
+            req.params.userId,
+            req.params.projectId
+          );
+
+      if (!project) {
+
+        return res
+          .status(404)
+          .json({
+            error: "Project not found"
+          });
+
+      }
+
+      res.json(project);
+
+    }
+    catch (err) {
+
+      res.status(500).json({
+        error: err.message
+      });
+
+    }
+
+  }
+);
+
+/*
+ * Create project
+ */
+router.post(
+  "/auth/user/:userId/projects",
+  requireAuth,
+  async (req, res) => {
+
+    if (!isAuthorized(req, res)) {
+      return;
+    }
+
+    try {
+
+      const project =
+        await ProjectService
+          .createProject(
+            req.params.userId,
+            req.body.name
+          );
+
+      res
+        .status(201)
+        .json(project);
+
+    }
+    catch (err) {
+
+      res.status(500).json({
+        error: err.message
+      });
+
+    }
+
+  }
+);
+
+/*
+ * Update project
+ */
+router.put(
+  "/auth/user/:userId/projects/:projectId",
+  requireAuth,
+  async (req, res) => {
+
+    if (!isAuthorized(req, res)) {
+      return;
+    }
+
+    try {
+
+      const project =
+        await ProjectService
+          .updateProject(
+            req.params.userId,
+            req.params.projectId,
+            req.body
+          );
+
+      if (!project) {
+
+        return res
+          .status(404)
+          .json({
+            error: "Project not found"
+          });
+
+      }
+
+      res.json(project);
+
+    }
+    catch (err) {
+
+      res.status(500).json({
+        error: err.message
+      });
+
+    }
+
+  }
+);
+
+/*
+ * Delete project
+ */
+router.delete(
+  "/auth/user/:userId/projects/:projectId",
+  requireAuth,
+  async (req, res) => {
+
+    if (!isAuthorized(req, res)) {
+      return;
+    }
+
+    try {
+
+      const deleted =
+        await ProjectService
+          .deleteProject(
+            req.params.userId,
+            req.params.projectId
+          );
+
+      if (!deleted) {
+
+        return res
+          .status(404)
+          .json({
+            error: "Project not found"
+          });
+
+      }
+
+      res.status(204).send();
+
+    }
+    catch (err) {
+
+      res.status(500).json({
+        error: err.message
+      });
+
+    }
+
+  }
+);
+
+module.exports = router;

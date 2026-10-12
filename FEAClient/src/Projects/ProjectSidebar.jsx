@@ -1,0 +1,445 @@
+import React from "react";
+
+function getCanvasId(canvas) {
+  return (
+    canvas?.id ??
+    canvas?.canvas_id ??
+    canvas?.canvasId ??
+    null
+  );
+}
+
+function isCanvasSelected(
+  canvas,
+  activeCanvasId
+) {
+  const canvasId =
+    getCanvasId(canvas);
+
+  if (!canvasId || !activeCanvasId) {
+    return false;
+  }
+
+  return (
+    String(canvasId) ===
+    String(activeCanvasId)
+  );
+}
+
+function ProjectSidebar({
+  user,
+  projects = [],
+  personalCanvases = [],
+  sharedCanvases = [],
+  selectedProjectId,
+  activeCanvasId,
+  onProjectSelected,
+  onProjectCanvasSelected,
+  onPersonalCanvasSelected,
+  onSharedCanvasSelected,
+  onCreateProject,
+  onRenameProject,
+  onDeleteProject,
+  onCreateCanvas,
+  onRenameCanvas,
+  onDeleteCanvas
+}) {
+  return (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        background: "#fafafa"
+      }}
+    >
+      <div
+        style={{
+          padding: 16,
+          background: "#0F766E",
+          color: "white"
+        }}
+      >
+        <div
+          style={{
+            fontSize: 22,
+            fontWeight: "bold"
+          }}
+        >
+          Tectera Labs
+        </div>
+
+        {user && (
+          <>
+            <div
+              style={{
+                marginTop: 12,
+                fontSize: 14
+              }}
+            >
+              {user.displayName}
+            </div>
+
+            <div
+              style={{
+                fontSize: 12,
+                opacity: 0.8
+              }}
+            >
+              {user.email}
+            </div>
+          </>
+        )}
+      </div>
+
+      <div style={{ padding: 8 }}>
+        <button
+          type="button"
+          onClick={() => onCreateProject?.()}
+          style={{
+            width: "100%",
+            padding: 10,
+            cursor: "pointer"
+          }}
+        >
+          + New Project
+        </button>
+      </div>
+
+      <div
+        style={{
+          flex: 1,
+          overflowY: "auto"
+        }}
+      >
+        <div style={sectionStyle}>
+          Personal Canvases
+        </div>
+
+        <button
+          type="button"
+          onClick={() =>
+            onCreateCanvas?.("__personal__")
+          }
+          style={subBtnStyle}
+        >
+          + Add Personal
+        </button>
+
+        {personalCanvases.map((canvas) => (
+          <CanvasItem
+            key={getCanvasId(canvas)}
+            canvas={canvas}
+            isSelected={isCanvasSelected(
+              canvas,
+              activeCanvasId
+            )}
+            onSelect={() =>
+              onPersonalCanvasSelected?.(canvas)
+            }
+            onRename={onRenameCanvas}
+            onDelete={onDeleteCanvas}
+          />
+        ))}
+
+        <div style={sectionStyle}>
+          Shared With Me
+        </div>
+
+        <button
+          type="button"
+          onClick={() =>
+            onCreateCanvas?.("__shared__")
+          }
+          style={subBtnStyle}
+        >
+          + Add Shared
+        </button>
+
+        {sharedCanvases.map((canvas) => (
+          <CanvasItem
+            key={getCanvasId(canvas)}
+            canvas={canvas}
+            isSelected={isCanvasSelected(
+              canvas,
+              activeCanvasId
+            )}
+            onSelect={() =>
+              onSharedCanvasSelected?.(canvas)
+            }
+            onRename={onRenameCanvas}
+            onDelete={onDeleteCanvas}
+          />
+        ))}
+
+        <div style={sectionStyle}>
+          Projects
+        </div>
+
+        {projects.map((project) => {
+          const isProjectSelected =
+            String(project.id) ===
+            String(selectedProjectId);
+
+          return (
+            <div key={project.id}>
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() =>
+                  onProjectSelected?.(project)
+                }
+                onKeyDown={(event) => {
+                  if (
+                    event.key === "Enter" ||
+                    event.key === " "
+                  ) {
+                    event.preventDefault();
+                    onProjectSelected?.(project);
+                  }
+                }}
+                style={{
+                  padding: "10px 12px",
+                  cursor: "pointer",
+                  background: isProjectSelected
+                    ? "#E0F2F1"
+                    : "transparent",
+                  display: "flex",
+                  justifyContent:
+                    "space-between",
+                  alignItems: "center"
+                }}
+              >
+                <div
+                  style={{
+                    overflow: "hidden",
+                    paddingRight: 8,
+                    flex: 1
+                  }}
+                >
+                  <div
+                    style={{
+                      fontWeight: isProjectSelected
+                        ? "bold"
+                        : "normal",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis"
+                    }}
+                  >
+                    📁 {project.name}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 4,
+                    flexShrink: 0
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+
+                      onRenameProject?.(
+                        project,
+                        project.name
+                      );
+                    }}
+                    style={iconBtnStyle}
+                    aria-label={`Rename ${
+                      project.name || "project"
+                    }`}
+                  >
+                    ✏️
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+
+                      onDeleteProject?.(project);
+                    }}
+                    style={iconBtnStyle}
+                    aria-label={`Delete ${
+                      project.name || "project"
+                    }`}
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
+
+              {isProjectSelected && (
+                <div
+                  style={{
+                    paddingLeft: 16,
+                    background: "#f5f5f5"
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onCreateCanvas?.(project)
+                    }
+                    style={subBtnStyle}
+                  >
+                    + New Canvas
+                  </button>
+
+                  {project.canvases?.map(
+                    (canvas) => (
+                      <CanvasItem
+                        key={getCanvasId(canvas)}
+                        canvas={canvas}
+                        isSelected={isCanvasSelected(
+                          canvas,
+                          activeCanvasId
+                        )}
+                        onSelect={() =>
+                          onProjectCanvasSelected?.(
+                            canvas,
+                            project
+                          )
+                        }
+                        onRename={onRenameCanvas}
+                        onDelete={onDeleteCanvas}
+                      />
+                    )
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function CanvasItem({
+  canvas,
+  isSelected,
+  onSelect,
+  onRename,
+  onDelete
+}) {
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onSelect}
+      onKeyDown={(event) => {
+        if (
+          event.key === "Enter" ||
+          event.key === " "
+        ) {
+          event.preventDefault();
+          onSelect?.();
+        }
+      }}
+      style={{
+        padding: "8px 12px",
+        cursor: "pointer",
+        background: isSelected
+          ? "#B2DFDB"
+          : "transparent",
+        borderLeft: isSelected
+          ? "4px solid #0F766E"
+          : "4px solid transparent",
+        boxShadow: isSelected
+          ? "inset 0 0 0 1px rgba(15, 118, 110, 0.22)"
+          : "none",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        fontSize: 13
+      }}
+    >
+      <span
+        style={{
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap"
+        }}
+      >
+        🎨 {canvas.name || "Untitled canvas"}
+      </span>
+
+      <div
+        style={{
+          display: "flex",
+          gap: 4,
+          flexShrink: 0
+        }}
+      >
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+
+            onRename?.(
+              canvas,
+              canvas.name
+            );
+          }}
+          style={iconBtnStyle}
+          aria-label={`Rename ${
+            canvas.name || "canvas"
+          }`}
+        >
+          ✏️
+        </button>
+
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+
+            onDelete?.(canvas);
+          }}
+          style={iconBtnStyle}
+          aria-label={`Delete ${
+            canvas.name || "canvas"
+          }`}
+        >
+          🗑️
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const sectionStyle = {
+  padding: "12px 12px 4px",
+  fontWeight: "bold",
+  fontSize: 11,
+  color: "#555",
+  textTransform: "uppercase"
+};
+
+const subBtnStyle = {
+  width: "calc(100% - 16px)",
+  margin: "4px 8px",
+  padding: "4px",
+  fontSize: 11,
+  cursor: "pointer",
+  background: "#fff",
+  border: "1px dashed #0F766E",
+  color: "#0F766E",
+  borderRadius: 3
+};
+
+const iconBtnStyle = {
+  border: "none",
+  background: "none",
+  cursor: "pointer",
+  fontSize: 12,
+  padding: "2px 4px"
+};
+
+export default ProjectSidebar;

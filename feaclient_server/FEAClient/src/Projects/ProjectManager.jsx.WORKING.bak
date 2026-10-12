@@ -1,0 +1,290 @@
+import React, { useEffect, useState } from "react";
+import mirror from "../../src/MirrorClient";
+import ProjectSidebar from "./ProjectSidebar";
+import CanvasEditor from "../Canvas/CanvasEditor";
+
+function getAuthHeaders() {
+  const token = localStorage.getItem("jwt");
+
+  return {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json"
+  };
+}
+
+function ProjectManager({ projectId, user }) {
+  const [project, setProject] = useState(null);
+  const [personalCanvases, setPersonalCanvases] = useState([]);
+  const [sharedCanvases, setSharedCanvases] = useState([]);
+  const [activeCanvasId, setActiveCanvasId] = useState(null);
+  const [selectedProjectId, setSelectedProjectId] = useState(projectId);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    async function loadProject() {
+      if (!projectId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+
+        const response = await fetch(
+          `/api/user/projects/${encodeURIComponent(projectId)}`,
+          {
+            headers: getAuthHeaders()
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const projectData = await response.json();
+
+        setProject(projectData);
+        setSelectedProjectId(projectData.id);
+
+        if (projectData?.canvases?.length > 0) {
+          setActiveCanvasId(projectData.canvases[0].id);
+        }
+
+        mirror.publish({
+          type: "PROJECT_CHANGED",
+          project: projectData
+        });
+      } catch (err) {
+        console.error("[ProjectManager]", err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadProject();
+  }, [projectId]);
+
+  const handleProjectSelected = (selectedProject) => {
+    setProject(selectedProject);
+    setSelectedProjectId(selectedProject?.id);
+
+    if (selectedProject?.canvases?.length > 0) {
+      setActiveCanvasId(selectedProject.canvases[0].id);
+    } else {
+      setActiveCanvasId(null);
+    }
+  };
+
+  const handleCanvasSelected = (canvas, parentProject = null) => {
+    if (!canvas) return;
+
+    setActiveCanvasId(canvas.id);
+
+    if (parentProject) {
+      setSelectedProjectId(parentProject.id);
+    }
+
+    mirror.publish({
+      type: "CANVAS_CHANGED",
+      canvasId: canvas.id
+    });
+  };
+
+  const handleCreateCanvas = async (targetProject) => {
+    try {
+      const response = await fetch(
+        `/api/user/projects/${targetProject.id}/canvases`,
+        {
+          method: "POST",
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            name: "Untitled Canvas",
+            canvas_data: {
+              shapes: []
+            }
+          })
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const newCanvas = await response.json();
+
+      setProject((prev) => ({
+        ...prev,
+        canvases: [...(prev?.canvases || []), newCanvas]
+      }));
+
+      setActiveCanvasId(newCanvas.id);
+    } catch (err) {
+      console.error("Create Canvas Failed", err);
+    }
+  };
+
+  const handleRenameCanvas = async (canvas, newName) => {
+    try {
+      const response = await fetch(
+        `/api/user/canvases/${canvas.id}`,
+        {
+          method: "PUT",
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            name: newName
+          })
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      setProject((prev) => ({
+        ...prev,
+        canvases: prev.canvases.map((c) =>
+          c.id === canvas.id
+            ? { ...c, name: newName }
+            : c
+        )
+      }));
+    } catch (err) {
+      console.error("Rename Canvas Failed", err);
+    }
+  };
+
+  const handleDeleteCanvas = async (canvas) => {
+    if (!canvas) return;
+
+    if (!window.confirm(`Delete "${canvas.name}"?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/api/user/canvases/${canvas.id}`,
+        {
+          method: "DELETE",
+          headers: getAuthHeaders()
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const remaining =
+        project?.canvases?.filter(
+          (c) => c.id !== canvas.id
+        ) || [];
+
+      setProject((prev) => ({
+        ...prev,
+        canvases: remaining
+      }));
+
+      setActiveCanvasId(
+        remaining.length > 0
+          ? remaining[0].id
+          : null
+      );
+    } catch (err) {
+      console.error("Delete Canvas Failed", err);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{ padding: 24 }}>
+        Loading Project Workspace...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div
+        style={{
+          padding: 24,
+          color: "#dc2626"
+        }}
+      >
+        Error: {error}
+      </div>
+    );
+  }
+
+  const projectsList = project ? [project] : [];
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        width: "100vw",
+        height: "100vh",
+        overflow: "hidden"
+      }}
+    >
+      {/* Sidebar */}
+
+      <div
+        style={{
+          width: 280,
+          flexShrink: 0,
+          borderRight: "1px solid #e2e8f0",
+          overflow: "auto"
+        }}
+      >
+        <ProjectSidebar
+          user={user}
+          projects={projectsList}
+          personalCanvases={personalCanvases}
+          sharedCanvases={sharedCanvases}
+          selectedProjectId={selectedProjectId}
+          selectedCanvasId={activeCanvasId}
+          onProjectSelected={handleProjectSelected}
+          onProjectCanvasSelected={handleCanvasSelected}
+          onPersonalCanvasSelected={handleCanvasSelected}
+          onSharedCanvasSelected={handleCanvasSelected}
+          onCreateCanvas={handleCreateCanvas}
+          onRenameCanvas={handleRenameCanvas}
+          onDeleteCanvas={handleDeleteCanvas}
+        />
+      </div>
+
+      {/* Canvas Workspace */}
+
+      <div
+        style={{
+          flex: 1,
+          height: "100%",
+          overflow: "hidden"
+        }}
+      >
+        {activeCanvasId ? (
+          <CanvasEditor
+            canvasId={activeCanvasId}
+            user={user}
+          />
+        ) : (
+          <div
+            style={{
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#64748b",
+              fontSize: "14px"
+            }}
+          >
+            Select or create a canvas to begin.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default ProjectManager;

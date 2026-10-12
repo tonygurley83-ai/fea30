@@ -1,0 +1,502 @@
+import React, {
+  useState
+} from "react";
+
+import {
+  Button,
+  Collapse,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  IconButton,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem
+} from "@mui/material";
+
+import FolderIcon
+from "@mui/icons-material/Folder";
+
+import DashboardIcon
+from "@mui/icons-material/Dashboard";
+
+import MoreVertIcon
+from "@mui/icons-material/MoreVert";
+
+import ExpandLess
+from "@mui/icons-material/ExpandLess";
+
+import ExpandMore
+from "@mui/icons-material/ExpandMore";
+
+const INDENT = {
+  project: 0,
+  canvas: 6,
+  action: 7
+};
+
+function ProjectSidebar({
+  user,
+  projects = [],
+  selectedProjectId,
+  selectedCanvasId,
+  onProjectSelected,
+  onCanvasSelected,
+  onCreateProject,
+  onCreateCanvas,
+  onEditCanvas,
+  onDeleteCanvas
+}) {
+  const projectList =
+    Array.isArray(
+      projects
+    )
+      ? projects
+      : Object.values(
+          projects || {}
+        );
+
+  const [
+    expandedProjects,
+    setExpandedProjects
+  ] = useState({});
+
+  const [
+    menuAnchor,
+    setMenuAnchor
+  ] = useState(null);
+
+  const [
+    selectedCanvas,
+    setSelectedCanvas
+  ] = useState(null);
+
+  const [
+    confirmDelete,
+    setConfirmDelete
+  ] = useState(false);
+
+  function toggleProject(
+    projectId
+  ) {
+    setExpandedProjects(
+      prev => ({
+        ...prev,
+        [projectId]:
+          !prev[
+            projectId
+          ]
+      })
+    );
+  }
+
+  function openCanvasMenu(
+    event,
+    canvas
+  ) {
+    event.stopPropagation();
+
+    setMenuAnchor(
+      event.currentTarget
+    );
+
+    setSelectedCanvas(
+      canvas
+    );
+  }
+
+  function closeCanvasMenu() {
+    setMenuAnchor(null);
+    setSelectedCanvas(null);
+  }
+
+  function handleDelete() {
+    if (
+      selectedCanvas
+    ) {
+      onDeleteCanvas?.(
+        selectedCanvas
+      );
+    }
+
+    setConfirmDelete(
+      false
+    );
+
+    closeCanvasMenu();
+  }
+
+  return (
+    <div
+      style={{
+        width: 320,
+        minWidth: 320,
+        height: "100%",
+        display: "flex",
+        flexDirection:
+          "column",
+        background:
+          "#fafafa",
+        borderRight:
+          "1px solid #ddd"
+      }}
+    >
+      <div
+        style={{
+          padding: 16,
+          background:
+            "#0F766E",
+          color:
+            "white"
+        }}
+      >
+        <div
+          style={{
+            fontSize: 22,
+            fontWeight:
+              "bold"
+          }}
+        >
+          Tectera Labs
+        </div>
+
+        {user && (
+          <>
+            <div
+              style={{
+                marginTop: 12,
+                fontSize: 14
+              }}
+            >
+              {
+                user.displayName
+              }
+            </div>
+
+            <div
+              style={{
+                fontSize: 12,
+                opacity: 0.8
+              }}
+            >
+              {user.email}
+            </div>
+          </>
+        )}
+      </div>
+
+      <div
+        style={{
+          padding: 8
+        }}
+      >
+        <Button
+          fullWidth
+          variant="contained"
+          onClick={
+            onCreateProject
+          }
+        >
+          New Project
+        </Button>
+      </div>
+
+      <div
+        style={{
+          padding:
+            "10px 14px",
+          fontWeight:
+            "bold",
+          background:
+            "#F3F4F6",
+          borderTop:
+            "1px solid #ddd"
+        }}
+      >
+        Projects
+      </div>
+
+      <div
+        style={{
+          flex: 1,
+          overflowY:
+            "auto"
+        }}
+      >
+        <List
+          dense
+          sx={{
+            width:
+              "100%"
+          }}
+        >
+          {projectList.map(
+            project => (
+              <React.Fragment
+                key={
+                  project.id
+                }
+              >
+                <ListItemButton
+                  selected={
+                    project.id ===
+                    selectedProjectId
+                  }
+                  sx={{
+                    minHeight:
+                      48,
+                    borderRadius:
+                      1,
+                    mx: 1
+                  }}
+                  onClick={() => {
+                    onProjectSelected?.(
+                      project
+                    );
+
+                    toggleProject(
+                      project.id
+                    );
+                  }}
+                >
+                  <ListItemIcon
+                    sx={{
+                      minWidth:
+                        36
+                    }}
+                  >
+                    <FolderIcon />
+                  </ListItemIcon>
+
+                  <ListItemText
+                    primary={
+                      project.name
+                    }
+                    primaryTypographyProps={{
+                      fontWeight:
+                        600,
+                      noWrap:
+                        true
+                    }}
+                  />
+
+                  {expandedProjects[
+                    project.id
+                  ]
+                    ? <ExpandLess />
+                    : <ExpandMore />}
+                </ListItemButton>
+
+                <Collapse
+                  in={
+                    expandedProjects[
+                      project.id
+                    ]
+                  }
+                  timeout="auto"
+                  unmountOnExit
+                >
+                  <List
+                    disablePadding
+                  >
+                    {(
+                      project.canvases ||
+                      []
+                    ).map(
+                      canvas => (
+                        <ListItemButton
+                          key={
+                            canvas.id
+                          }
+                          sx={{
+                            pl:
+                              INDENT.canvas,
+                            minHeight:
+                              40,
+                            borderRadius:
+                              1,
+                            mx: 1
+                          }}
+                          selected={
+                            canvas.id ===
+                            selectedCanvasId
+                          }
+                          onClick={() =>
+                            onCanvasSelected?.(
+                              canvas
+                            )
+                          }
+                        >
+                          <ListItemIcon
+                            sx={{
+                              minWidth:
+                                36
+                            }}
+                          >
+                            <DashboardIcon />
+                          </ListItemIcon>
+
+                          <ListItemText
+                            primary={
+                              canvas.name
+                            }
+                            primaryTypographyProps={{
+                              noWrap:
+                                true,
+                              fontSize:
+                                14
+                            }}
+                          />
+
+                          <IconButton
+                            size="small"
+                            sx={{
+                              ml: 1
+                            }}
+                            onClick={
+                              e =>
+                                openCanvasMenu(
+                                  e,
+                                  canvas
+                                )
+                            }
+                          >
+                            <MoreVertIcon fontSize="small" />
+                          </IconButton>
+                        </ListItemButton>
+                      )
+                    )}
+
+                    <ListItemButton
+                      sx={{
+                        pl:
+                          INDENT.action,
+                        borderRadius:
+                          1,
+                        mx: 1
+                      }}
+                      onClick={() =>
+                        onCreateCanvas?.(
+                          project
+                        )
+                      }
+                    >
+                      <ListItemIcon
+                        sx={{
+                          minWidth:
+                            36,
+                          color:
+                            "#0F766E",
+                          fontWeight:
+                            "bold"
+                        }}
+                      >
+                        +
+                      </ListItemIcon>
+
+                      <ListItemText
+                        primary="+ New Canvas"
+                        primaryTypographyProps={{
+                          color:
+                            "#0F766E"
+                        }}
+                      />
+                    </ListItemButton>
+                  </List>
+                </Collapse>
+              </React.Fragment>
+            )
+          )}
+        </List>
+      </div>
+
+      <Menu
+        anchorEl={menuAnchor}
+        open={Boolean(
+          menuAnchor
+        )}
+        onClose={
+          closeCanvasMenu
+        }
+      >
+        <MenuItem
+          onClick={() => {
+            onEditCanvas?.(
+              selectedCanvas
+            );
+            closeCanvasMenu();
+          }}
+        >
+          Rename
+        </MenuItem>
+
+        <MenuItem
+          onClick={() =>
+            setConfirmDelete(
+              true
+            )
+          }
+        >
+          Delete
+        </MenuItem>
+      </Menu>
+
+      <Dialog
+        open={
+          confirmDelete
+        }
+        onClose={() =>
+          setConfirmDelete(
+            false
+          )
+        }
+      >
+        <DialogTitle>
+          Delete Canvas?
+        </DialogTitle>
+
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you
+            want to delete{" "}
+            <strong>
+              {
+                selectedCanvas?.name
+              }
+            </strong>
+            ?
+          </DialogContentText>
+        </DialogContent>
+
+        <DialogActions>
+          <Button
+            onClick={() =>
+              setConfirmDelete(
+                false
+              )
+            }
+          >
+            Cancel
+          </Button>
+
+          <Button
+            variant="contained"
+            color="error"
+            onClick={
+              handleDelete
+            }
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </div>
+  );
+}
+
+export default ProjectSidebar;

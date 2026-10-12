@@ -1,0 +1,1 @@
+find . -type f -name "*.sql" ! -name "master.sql" -exec cat {} + > master.sql

@@ -1,0 +1,151 @@
+import React from "react";
+
+function ProjectSidebar({
+  user,
+  projects = [],
+  selectedProjectId,
+  onProjectSelected,
+  onCreateProject,
+  onRenameProject,
+  onDeleteProject
+}) {
+  const projectList = Array.isArray(projects)
+    ? projects
+    : Object.values(projects || {});
+
+  function createProject() {
+    if (typeof onCreateProject !== "function") {
+      console.error("onCreateProject prop missing");
+      return;
+    }
+    onCreateProject();
+  }
+
+  function handleRename(e, project) {
+    e.stopPropagation(); // Prevents selecting the project when clicking rename
+    if (typeof onRenameProject === "function") {
+      onRenameProject(project.id, project.name);
+    }
+  }
+
+  function handleDelete(e, projectId) {
+    e.stopPropagation(); // Prevents selecting the project when clicking delete
+    if (typeof onDeleteProject === "function") {
+      onDeleteProject(projectId);
+    }
+  }
+
+  return (
+    <div
+      style={{
+        width: 260,
+        minWidth: 260,
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        background: "#fafafa"
+      }}
+    >
+      {/* Header / User Info */}
+      <div
+        style={{
+          padding: 16,
+          background: "#0F766E",
+          color: "white"
+        }}
+      >
+        <div style={{ fontSize: 22, fontWeight: "bold" }}>Tectera Labs</div>
+        {user && (
+          <>
+            <div style={{ marginTop: 12, fontSize: 14 }}>{user.displayName}</div>
+            <div style={{ fontSize: 12, opacity: 0.8 }}>{user.email}</div>
+          </>
+        )}
+      </div>
+
+      {/* New Project Button */}
+      <div style={{ padding: 8 }}>
+        <button
+          onClick={createProject}
+          style={{
+            width: "100%",
+            padding: 10,
+            cursor: "pointer"
+          }}
+        >
+          + New Project
+        </button>
+      </div>
+
+      <div style={{ padding: "8px 12px", fontWeight: "bold" }}>Projects</div>
+
+      {/* Project List */}
+      <div style={{ flex: 1, overflowY: "auto" }}>
+        {projectList.map((project) => {
+          const isSelected = project.id === selectedProjectId;
+
+          return (
+            <div
+              key={project.id}
+              onClick={() => onProjectSelected(project)}
+              style={{
+                padding: "10px 12px",
+                cursor: "pointer",
+                background: isSelected ? "#E0F2F1" : "transparent",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center"
+              }}
+            >
+              <div style={{ overflow: "hidden", paddingRight: 8 }}>
+                <div
+                  style={{
+                    fontWeight: isSelected ? "bold" : "normal",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis"
+                  }}
+                >
+                  {project.name}
+                </div>
+                <div style={{ fontSize: 11, color: "#666" }}>{project.id}</div>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                <button
+                  onClick={(e) => handleRename(e, project)}
+                  title="Rename Project"
+                  style={{
+                    border: "none",
+                    background: "none",
+                    cursor: "pointer",
+                    fontSize: 12,
+                    padding: "2px 4px"
+                  }}
+                >
+                  ✏️
+                </button>
+                <button
+                  onClick={(e) => handleDelete(e, project.id)}
+                  title="Delete Project"
+                  style={{
+                    border: "none",
+                    background: "none",
+                    cursor: "pointer",
+                    fontSize: 12,
+                    padding: "2px 4px"
+                  }}
+                >
+                  🗑️
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export default ProjectSidebar;

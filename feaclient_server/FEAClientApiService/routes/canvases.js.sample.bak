@@ -1,0 +1,34 @@
+const router =
+  require("express").Router();
+
+const canvases =
+  require("../data/canvases");
+
+const requireAuth =
+  require("../middleware/requireAuth");
+
+router.get(
+  "/api/canvases",
+  requireAuth,
+  (req, res) => {
+    res.json(
+      Object.values(
+        canvases
+      )
+    );
+  }
+);
+
+router.get(
+  "/api/canvases/:canvasId",
+  requireAuth,
+  (req, res) => {
+    res.json(
+      canvases[
+        req.params.canvasId
+      ]
+    );
+  }
+);
+
+module.exports = router;

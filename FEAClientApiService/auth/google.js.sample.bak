@@ -1,0 +1,108 @@
+const GoogleStrategy =
+  require("passport-google-oauth20").Strategy;
+
+const user =
+  require("../data/user");
+
+module.exports = passport => {
+
+  console.log("[AUTH] Registering Google Strategy");
+
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID:
+          process.env.GOOGLE_CLIENT_ID,
+
+        clientSecret:
+          process.env.GOOGLE_CLIENT_SECRET,
+
+        callbackURL:
+          "/auth/google/callback"
+      },
+
+      async (
+        accessToken,
+        refreshToken,
+        profile,
+        done
+      ) => {
+
+        try {
+	  console.log("[AUTH] Registering Google Strategy");
+
+          const email =
+            profile.emails?.[0]?.value;
+
+          let user =
+            Object.values(user).find(
+              u =>
+                u.email === email ||
+                u.googleEmail === email ||
+                u.microsoftEmail === email
+            );
+
+          if (!user) {
+
+            user = {
+              id: `user-${Date.now()}`,
+
+              displayName:
+                profile.displayName,
+
+              email,
+
+              googleEmail: email,
+
+              microsoftEmail: null,
+
+              projectIds: [
+                "project-302"
+              ],
+
+              shareGroupIds: [
+                "sharegroup-301"
+              ]
+            };
+
+            user[user.id] = user;
+
+            console.log(
+              "[AUTH] Created user:",
+              user.id
+            );
+
+          } else {
+
+            user.googleEmail =
+              email;
+
+            console.log(
+              "[AUTH] Existing user:",
+              user.id
+            );
+
+          }
+
+          return done(
+            null,
+            user
+          );
+
+        }
+        catch (error) {
+
+          console.error(
+            "[AUTH] Google error:",
+            error
+          );
+
+          return done(error);
+
+        }
+
+      }
+    )
+  );
+
+};

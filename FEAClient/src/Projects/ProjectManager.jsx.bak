@@ -1,0 +1,140 @@
+import React, { useEffect, useState } from "react";
+import mirror from "../../src/MirrorClient";
+import ProjectSidebar from "./ProjectSidebar";
+import CanvasEditor from "../Canvas/CanvasEditor";
+
+function getAuthHeaders() {
+  const token = localStorage.getItem("jwt");
+  return {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json"
+  };
+}
+
+function ProjectManager({ projectId, user }) {
+  const [project, setProject] = useState(null);
+  const [personalCanvases, setPersonalCanvases] = useState([]);
+  const [sharedCanvases, setSharedCanvases] = useState([]);
+  const [activeCanvasId, setActiveCanvasId] = useState(null);
+  const [selectedProjectId, setSelectedProjectId] = useState(projectId);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    async function loadProject() {
+      if (!projectId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const response = await fetch(
+          `/api/user/projects/${encodeURIComponent(projectId)}`,
+          {
+            headers: getAuthHeaders()
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const projectData = await response.json();
+        console.log("[ProjectManager] Loaded project", projectData);
+
+        setProject(projectData);
+        setSelectedProjectId(projectData?.id || projectId);
+        if (projectData?.canvases?.[0]?.id) {
+          setActiveCanvasId(projectData.canvases[0].id);
+        }
+
+        mirror.publish({
+          type: "PROJECT_CHANGED",
+          project: projectData
+        });
+      } catch (err) {
+        console.error("[ProjectManager] Project Load Failed", err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadProject();
+  }, [projectId]);
+
+  // Sidebar Handlers
+  const handleProjectSelected = (selectedProj) => {
+    setSelectedProjectId(selectedProj?.id);
+    if (selectedProj?.canvases?.[0]?.id) {
+      setActiveCanvasId(selectedProj.canvases[0].id);
+    }
+  };
+
+  const handleCanvasSelected = (canvas, parentProject = null) => {
+    setActiveCanvasId(canvas?.id);
+    if (parentProject) {
+      setSelectedProjectId(parentProject.id);
+    }
+    mirror.publish({
+      type: "CANVAS_CHANGED",
+      canvasId: canvas?.id
+    });
+  };
+
+  const handleCreateCanvas = async (target) => {
+    console.log("[ProjectManager] Create canvas for target:", target);
+    // Add canvas creation API call here if needed
+  };
+
+  const handleRenameCanvas = async (canvas, currentName) => {
+    console.log("[ProjectManager] Rename canvas:", canvas?.id);
+    // Add canvas rename API call here if needed
+  };
+
+  const handleDeleteCanvas = async (canvas) => {
+    console.log("[ProjectManager] Delete canvas:", canvas?.id);
+    // Add canvas delete API call here if needed
+  };
+
+  if (loading) {
+    return <div style={{ padding: 24, color: "#666" }}>Loading Project workspace...</div>;
+  }
+
+  if (error) {
+    return <div style={{ padding: 24, color: "#dc2626" }}>Error loading workspace: {error}</div>;
+  }
+
+  const projectsList = project ? [project] : [];
+
+  return (
+    <div style={{ display: "flex", width: "100vw", height: "100vh", overflow: "hidden" }}>
+      {/* Left Navigation Sidebar */}
+      <div style={{ width: 280, height: "100%", flexShrink: 0, borderRight: "1px solid #e2e8f0" }}>
+        <ProjectSidebar
+          user={user}
+          projects={projectsList}
+          personalCanvases={personalCanvases}
+          sharedCanvases={sharedCanvases}
+          selectedProjectId={selectedProjectId}
+          selectedCanvasId={activeCanvasId}
+          onProjectSelected={handleProjectSelected}
+          onPersonalCanvasSelected={(c) => handleCanvasSelected(c)}
+          onSharedCanvasSelected={(c) => handleCanvasSelected(c)}
+          onProjectCanvasSelected={(c, p) => handleCanvasSelected(c, p)}
+          onCreateCanvas={handleCreateCanvas}
+          onRenameCanvas={handleRenameCanvas}
+          onDeleteCanvas={handleDeleteCanvas}
+        />
+      </div>
+
+      {/* Right Canvas Editor Stage */}
+      <div style={{ flex: 1, height: "100%", overflow: "hidden" }}>
+        <CanvasEditor canvasId={activeCanvasId} user={user} />
+      </div>
+    </div>
+  );
+}
+
+export default ProjectManager;

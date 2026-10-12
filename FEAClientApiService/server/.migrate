@@ -1,0 +1,22 @@
+for f in \
+migrations/table-users_create.sql \
+migrations/table-user_profiles_create.sql \
+migrations/table-user_identities_create.sql \
+migrations/table-projects_create.sql \
+migrations/table-canvases_create.sql \
+migrations/table-project_members_create.sql \
+migrations/table-project_canvases_create.sql \
+migrations/table-canvas_versions.sql \
+migrations/table-canvas_share_links.sql \
+procedures/trigger-updated_at.sql \
+procedures/create_project.sql \
+procedures/create_canvas.sql \
+procedures/create_canvas_version.sql \
+procedures/share_canvas.sql \
+procedures/get_project_canvsses.sql \
+procedures/view_canvas_current_version.sql \
+procedures/view_admin_project_canvases.sql \
+procedures/admin-or-shared_get_canvas_projects.sql
+do
+    psql "$DATABASE_URL" -f "$f"
+done

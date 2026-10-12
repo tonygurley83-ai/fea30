@@ -1,0 +1,20 @@
+useEffect(() => {
+
+  const unsubscribe =
+    mirror.subscribe(
+
+      "CANVAS_RENDERED",
+
+      message => {
+
+        setCanvas(
+          message.canvas
+        );
+
+      }
+
+    );
+
+  return unsubscribe;
+
+}, []);

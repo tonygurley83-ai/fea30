@@ -1,0 +1,370 @@
+import React, { useEffect, useState } from "react";
+import mirror from "./MirrorClient";
+import ProjectSidebar from "../../FEAClient/src/Projects/ProjectSidebar";
+
+const TOKEN_KEY = "jwt";
+const USER_KEY = "user";
+
+const getToken = () => localStorage.getItem(TOKEN_KEY) || "";
+
+const getUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem(USER_KEY));
+  } catch {
+    return null;
+  }
+};
+
+const setUser = (user) => {
+  if (user) {
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  } else {
+    localStorage.removeItem(USER_KEY);
+  }
+};
+
+const authHeader = () => ({
+  "Content-Type": "application/json",
+  ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {})
+});
+
+function FEAMain() {
+  const [user, setUserState] = useState(null);
+  const [projects, setProjects] = useState([]);
+  const [personalCanvases, setPersonalCanvases] = useState([]);
+  const [sharedCanvases, setSharedCanvases] = useState([]);
+  const [selectedProjectId, setSelectedProjectId] = useState(null);
+  const [selectedCanvasId, setSelectedCanvasId] = useState(null);
+
+  const currentUser = getUser();
+
+  const userId =
+    currentUser?.id ||
+    currentUser?.userId ||
+    user?.id ||
+    user?.userId ||
+    null;
+
+  // Initialize user state from localStorage on mount
+  useEffect(() => {
+    const storedUser = getUser();
+    if (storedUser) {
+      setUserState(storedUser);
+    }
+  }, []);
+
+  // Sync user state to localStorage whenever it changes
+  useEffect(() => {
+    if (user) {
+      setUser(user);
+    } else {
+      localStorage.removeItem(USER_KEY);
+    }
+  }, [user]);
+
+  useEffect(() => {
+  loadUser();
+}, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    loadProjects();
+    loadPersonalCanvases();
+    loadSharedCanvases();
+  }, [user]);
+
+  async function loadUser() {
+    try {
+      const res = await fetch(`/auth/me`, { headers: authHeader() });
+      if (res.ok) {
+
+  const userData =
+    await res.json();
+
+      console.log(
+        "[FEAMain] Loaded user",
+        userData
+      );
+
+      setUserState(userData);
+
+      localStorage.setItem(
+        USER_KEY,
+        JSON.stringify(userData)
+      );
+
+    }
+
+    } catch (err) {
+      console.error("User load error:", err);
+    }
+  }
+
+  async function loadProjects() {
+    try {
+      const res = await fetch(`/auth/projects`, { headers: authHeader() });
+      if (!res.ok) throw new Error("Projects failed");
+      const data = await res.json();
+      const list = (Array.isArray(data) ? data : []).map(p => ({
+        id: p.project_id || p.id,
+        name: p.project_name || p.name,
+        canvases: p.canvases || []
+      }));
+      setProjects(list);
+      if (list.length > 0 && !selectedProjectId) setSelectedProjectId(list[0].id);
+    } catch (err) {
+      console.error("Project load error:", err);
+    }
+  }
+
+  async function loadPersonalCanvases() {
+    try {
+      const res = await fetch("/auth/canvases/personal", { headers: authHeader() });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setPersonalCanvases(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Personal load error:", err);
+    }
+  }
+
+  async function loadSharedCanvases() {
+    try {
+      const res = await fetch("/auth/canvases/shared", { headers: authHeader() });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setSharedCanvases(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Shared load error:", err);
+    }
+  }
+
+  // ── MIRROR PUBLISH ONLY ──
+  // Server middleware receives this, broadcasts to all subscribers
+  function selectProject(project) {
+    setSelectedProjectId(project.id);
+    setSelectedCanvasId(null);
+    mirror.publish({
+      type: "PROJECT_CHANGED",
+      project: {
+        id: project.id,
+        name: project.name,
+        activeProjectId: project.id,
+        activeCanvasId: null
+      }
+    });
+  }
+
+  function selectProjectCanvas(canvas, project) {
+    setSelectedCanvasId(canvas.id);
+    mirror.publish({
+      type: "PROJECT_CHANGED",
+      project: {
+        id: project.id,
+        name: project.name,
+        activeProjectId: project.id,
+        activeCanvasId: canvas.id
+      }
+    });
+  }
+
+  function selectPersonalCanvas(canvas) {
+    setSelectedCanvasId(canvas.id);
+    setSelectedProjectId("__personal__");
+    mirror.publish({
+      type: "PROJECT_CHANGED",
+      project: {
+        id: "__personal__",
+        name: "Personal Canvases",
+        activeProjectId: "__personal__",
+        activeCanvasId: canvas.id
+      }
+    });
+  }
+
+  function selectSharedCanvas(canvas) {
+    setSelectedCanvasId(canvas.id);
+    setSelectedProjectId("__shared__");
+    mirror.publish({
+      type: "PROJECT_CHANGED",
+      project: {
+        id: "__shared__",
+        name: "Shared With Me",
+        activeProjectId: "__shared__",
+        activeCanvasId: canvas.id
+      }
+    });
+  }
+
+  // ── CRUD ──
+  async function createProject() {
+    const name = prompt("Project Name", "New Project");
+    if (!name?.trim()) return;
+    try {
+      await fetch(`/auth/projects`, {
+        method: "POST",
+        headers: authHeader(),
+        body: JSON.stringify({ name: name.trim() })
+      });
+      await loadProjects();
+    } catch (err) {
+      console.error("Create project error:", err);
+    }
+  }
+
+  async function renameProject(project, newName) {
+    try {
+      await fetch(`/auth/projects/${project.id}`, {
+        method: "PUT",
+        headers: authHeader(),
+        body: JSON.stringify({ name: newName })
+      });
+      await loadProjects();
+    } catch (err) {
+      console.error("Rename project error:", err);
+    }
+  }
+
+  async function deleteProject(project) {
+    if (!window.confirm(`Delete "${project.name}"?`)) return;
+    try {
+      await fetch(`/auth/projects/${project.id}`, {
+        method: "DELETE",
+        headers: authHeader()
+      });
+      if (selectedProjectId === project.id) {
+        setSelectedProjectId(null);
+        setSelectedCanvasId(null);
+      }
+      await loadProjects();
+    } catch (err) {
+      console.error("Delete project error:", err);
+    }
+  }
+
+  async function createCanvas(scopeOrProject) {
+    const name = prompt("Canvas Name", "New Canvas");
+    if (!name?.trim()) return;
+    const body = { name: name.trim(), canvas_data: {} };
+    if (scopeOrProject === "__personal__") {
+      body.scope = "personal";
+      body.project_id = null;
+    } else if (scopeOrProject === "__shared__") {
+      body.scope = "shared";
+      body.project_id = null;
+    } else if (scopeOrProject?.id) {
+      body.scope = "project";
+      body.project_id = scopeOrProject.id;
+    }
+    try {
+      await fetch("/auth/canvases", {
+        method: "POST",
+        headers: authHeader(),
+        body: JSON.stringify(body)
+      });
+      await loadProjects();
+      await loadPersonalCanvases();
+      await loadSharedCanvases();
+    } catch (err) {
+      console.error("Create canvas error:", err);
+    }
+  }
+
+  async function renameCanvas(canvas, newName) {
+    try {
+      await fetch(`/auth/canvases/${canvas.id}`, {
+        method: "PUT",
+        headers: authHeader(),
+        body: JSON.stringify({ name: newName })
+      });
+      await loadProjects();
+      await loadPersonalCanvases();
+      await loadSharedCanvases();
+    } catch (err) {
+      console.error("Rename canvas error:", err);
+    }
+  }
+
+  async function deleteCanvas(canvas) {
+    if (!window.confirm(`Delete "${canvas.name}"?`)) return;
+    try {
+      await fetch(`/auth/canvases/${canvas.id}`, {
+        method: "DELETE",
+        headers: authHeader()
+      });
+      if (selectedCanvasId === canvas.id) {
+        setSelectedCanvasId(null);
+        mirror.publish({ type: "PROJECT_CHANGED", project: null });
+      }
+      await loadProjects();
+      await loadPersonalCanvases();
+      await loadSharedCanvases();
+    } catch (err) {
+      console.error("Delete canvas error:", err);
+    }
+  }
+
+  // ── USER MANAGEMENT ──
+  async function updateUser(updatedUser) {
+    try {
+      const res = await fetch(`/auth/user/${userId}`, {
+        method: "PUT",
+        headers: authHeader(),
+        body: JSON.stringify(updatedUser)
+      });
+      if (res.ok) {
+        const userData = await res.json();
+        setUserState(userData);
+        // localStorage is automatically synced via useEffect
+      }
+    } catch (err) {
+      console.error("Update user error:", err);
+    }
+  }
+
+  async function logout() {
+    try {
+      await fetch("/auth/logout", {
+        method: "POST",
+        headers: authHeader()
+      });
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+    setUserState(null);
+    setProjects([]);
+    setPersonalCanvases([]);
+    setSharedCanvases([]);
+    setSelectedProjectId(null);
+    setSelectedCanvasId(null);
+  }
+
+  return (
+    <ProjectSidebar
+      user={user}
+      projects={projects}
+      personalCanvases={personalCanvases}
+      sharedCanvases={sharedCanvases}
+      selectedProjectId={selectedProjectId}
+      selectedCanvasId={selectedCanvasId}
+      onProjectSelected={selectProject}
+      onProjectCanvasSelected={selectProjectCanvas}
+      onPersonalCanvasSelected={selectPersonalCanvas}
+      onSharedCanvasSelected={selectSharedCanvas}
+      onCreateProject={createProject}
+      onRenameProject={renameProject}
+      onDeleteProject={deleteProject}
+      onCreateCanvas={createCanvas}
+      onRenameCanvas={renameCanvas}
+      onDeleteCanvas={deleteCanvas}
+      onUpdateUser={updateUser}
+      onLogout={logout}
+    />
+  );
+}
+
+export default FEAMain;
+

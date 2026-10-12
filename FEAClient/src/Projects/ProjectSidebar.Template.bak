@@ -1,0 +1,282 @@
+import React from "react";
+
+function ProjectSidebar({
+  user,
+  projects = [],
+  selectedProjectId,
+  canvases = {},
+  selectedCanvasId,
+  onProjectSelected,
+  onCreateProject,
+  onRenameProject,
+  onDeleteProject,
+  onCanvasSelected,
+  onCreateCanvas,
+  onRenameCanvas,
+  onDeleteCanvas
+}) {
+  const projectList = Array.isArray(projects)
+    ? projects
+    : Object.values(projects || {});
+
+  const personalCanvases = canvases["__personal__"] || [];
+  const sharedCanvases = canvases["__shared__"] || [];
+
+  return (
+    <div
+      style={{
+        width: 280,
+        minWidth: 280,
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        background: "#fafafa",
+        borderRight: "1px solid #e5e7eb"
+      }}
+    >
+      {/* Header */}
+      <div style={{ padding: 16, background: "#0F766E", color: "white" }}>
+        <div style={{ fontSize: 22, fontWeight: "bold" }}>Tectera Labs</div>
+        {user && (
+          <>
+            <div style={{ marginTop: 12, fontSize: 14 }}>{user.displayName}</div>
+            <div style={{ fontSize: 12, opacity: 0.8 }}>{user.email}</div>
+          </>
+        )}
+      </div>
+
+      {/* Action Header */}
+      <div style={{ padding: 8 }}>
+        <button
+          onClick={onCreateProject}
+          style={{
+            width: "100%",
+            padding: 10,
+            cursor: "pointer",
+            fontWeight: "bold"
+          }}
+        >
+          + New Project
+        </button>
+      </div>
+
+      <div style={{ flex: 1, overflowY: "auto", padding: "0 8px" }}>
+        
+        {/* --- PERSONAL CANVASES SECTION --- */}
+        <div style={sectionHeaderStyle}>
+          <span>Personal Canvases</span>
+          <button
+            onClick={() => onCreateCanvas("__personal__")}
+            title="Add Personal Canvas"
+            style={iconBtnStyle}
+          >
+            +
+          </button>
+        </div>
+        <div>
+          {personalCanvases.length === 0 ? (
+            <div style={emptyTextStyle}>No personal canvases</div>
+          ) : (
+            personalCanvases.map((canvas) => (
+              <CanvasRow
+                key={canvas.id}
+                canvas={canvas}
+                isSelected={canvas.id === selectedCanvasId}
+                onSelect={onCanvasSelected}
+                onRename={(id, name) => onRenameCanvas("__personal__", id, name)}
+                onDelete={(id) => onDeleteCanvas("__personal__", id)}
+              />
+            ))
+          )}
+        </div>
+
+        {/* --- SHARED CANVASES SECTION --- */}
+        <div style={sectionHeaderStyle}>
+          <span>Shared With Me</span>
+        </div>
+        <div>
+          {sharedCanvases.length === 0 ? (
+            <div style={emptyTextStyle}>No shared canvases</div>
+          ) : (
+            sharedCanvases.map((canvas) => (
+              <CanvasRow
+                key={canvas.id}
+                canvas={canvas}
+                isSelected={canvas.id === selectedCanvasId}
+                onSelect={onCanvasSelected}
+                onRename={(id, name) => onRenameCanvas("__shared__", id, name)}
+                onDelete={(id) => onDeleteCanvas("__shared__", id)}
+              />
+            ))
+          )}
+        </div>
+
+        {/* --- PROJECTS SECTION --- */}
+        <div style={sectionHeaderStyle}>
+          <span>Projects</span>
+        </div>
+        {projectList.map((project) => {
+          const isProjectSelected = project.id === selectedProjectId;
+          const projectCanvases = canvases[project.id] || [];
+
+          return (
+            <div key={project.id} style={{ marginBottom: 4 }}>
+              {/* Project Title Row */}
+              <div
+                onClick={() => onProjectSelected(project)}
+                style={{
+                  padding: "8px 10px",
+                  cursor: "pointer",
+                  background: isProjectSelected ? "#E0F2F1" : "transparent",
+                  borderRadius: 4,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  fontWeight: isProjectSelected ? "bold" : "normal"
+                }}
+              >
+                <div style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                  📁 {project.name}
+                </div>
+                <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCreateCanvas(project.id);
+                    }}
+                    title="Add Canvas"
+                    style={iconBtnStyle}
+                  >
+                    +
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRenameProject(project.id, project.name);
+                    }}
+                    title="Rename Project"
+                    style={iconBtnStyle}
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteProject(project.id);
+                    }}
+                    title="Delete Project"
+                    style={iconBtnStyle}
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
+
+              {/* Nested Canvases */}
+              {isProjectSelected && (
+                <div style={{ paddingLeft: 16 }}>
+                  {projectCanvases.length === 0 ? (
+                    <div style={emptyTextStyle}>No canvases yet</div>
+                  ) : (
+                    projectCanvases.map((canvas) => (
+                      <CanvasRow
+                        key={canvas.id}
+                        canvas={canvas}
+                        isSelected={canvas.id === selectedCanvasId}
+                        onSelect={onCanvasSelected}
+                        onRename={(id, name) =>
+                          onRenameCanvas(project.id, id, name)
+                        }
+                        onDelete={(id) => onDeleteCanvas(project.id, id)}
+                      />
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Reusable Canvas Row Helper Component
+function CanvasRow({ canvas, isSelected, onSelect, onRename, onDelete }) {
+  return (
+    <div
+      onClick={() => onSelect(canvas)}
+      style={{
+        padding: "6px 10px",
+        cursor: "pointer",
+        background: isSelected ? "#B2DFDB" : "transparent",
+        borderRadius: 4,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        fontSize: 13,
+        marginTop: 2
+      }}
+    >
+      <div
+        style={{
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap"
+        }}
+      >
+        🎨 {canvas.name}
+      </div>
+      <div style={{ display: "flex", gap: 4 }}>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onRename(canvas.id, canvas.name);
+          }}
+          title="Rename Canvas"
+          style={iconBtnStyle}
+        >
+          ✏️
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(canvas.id);
+          }}
+          title="Delete Canvas"
+          style={iconBtnStyle}
+        >
+          🗑️
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const iconBtnStyle = {
+  border: "none",
+  background: "none",
+  cursor: "pointer",
+  fontSize: 12,
+  padding: "2px 4px"
+};
+
+const sectionHeaderStyle = {
+  padding: "12px 4px 6px 4px",
+  fontWeight: "bold",
+  fontSize: 12,
+  color: "#555",
+  textTransform: "uppercase",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center"
+};
+
+const emptyTextStyle = {
+  padding: "4px 8px",
+  fontSize: 12,
+  color: "#999",
+  fontStyle: "italic"
+};
+
+export default ProjectSidebar;

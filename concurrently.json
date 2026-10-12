@@ -1,0 +1,7 @@
+{
+  "scripts": {
+    "server": "node FEADataService/src/server.js",
+    "client": "npm install @babel/core@7.26.0 @babel/preset-env @babel/preset-react babel-loader --save-dev --legacy-peer-deps && webpack-dev-server",
+    "start": "concurrently \"npm run server\" \"npm run client\""
+  }
+}

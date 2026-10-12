@@ -1,0 +1,36 @@
+<Stage
+  width={800}
+  height={600}
+>
+
+  <Layer>
+
+    {canvas.elements.map(
+      element => (
+
+        <Line
+          key={element.id}
+          points={element.points}
+          stroke="black"
+        />
+
+      )
+    )}
+
+    {canvas.nodes.map(
+      node => (
+
+        <Circle
+          key={node.id}
+          x={node.x}
+          y={node.y}
+          radius={5}
+          fill="red"
+        />
+
+      )
+    )}
+
+  </Layer>
+
+</Stage>

@@ -1,0 +1,55 @@
+import React from "react";
+
+import {
+  Stage,
+  Layer,
+  Circle,
+  Line
+} from "react-konva";
+
+function CanvasManager({
+  canvas
+}) {
+
+  return (
+
+    <Stage
+      width={1000}
+      height={700}
+    >
+
+      <Layer>
+
+        {(canvas.elements || [])
+          .map(element => (
+
+            <Line
+              key={element.id}
+              points={element.points}
+              stroke="black"
+            />
+
+          ))}
+
+        {(canvas.nodes || [])
+          .map(node => (
+
+            <Circle
+              key={node.id}
+              x={node.x}
+              y={node.y}
+              radius={5}
+              fill="red"
+            />
+
+          ))}
+
+      </Layer>
+
+    </Stage>
+
+  );
+
+}
+
+export default CanvasManager;

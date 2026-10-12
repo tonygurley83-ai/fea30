@@ -1,0 +1,15 @@
+class AuthManager {
+
+  currentUser = {
+    id: "user-1",
+    displayName: "Admin",
+    email: "admin@tecteralabs.com"
+  };
+
+  getUser() {
+    return this.currentUser;
+  }
+
+}
+
+export default new AuthManager();

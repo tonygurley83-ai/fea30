@@ -1,0 +1,264 @@
+const jwt =
+  require("jsonwebtoken");
+
+const crypto =
+  require("crypto");
+
+const UserRepository =
+  require(
+    "../repositories/UserRepository"
+  );
+
+const ROLE_LEVELS = {
+
+  Viewer: 1,
+
+  Engineer: 2,
+
+  Admin: 3
+
+};
+
+class AuthService {
+
+  createToken(
+    user
+  ) {
+
+    return jwt.sign(
+
+      {
+
+        userId:
+          user.id,
+
+        email:
+          user.email,
+
+        role:
+          user.role,
+
+        identityHash:
+          user.identity_hash
+
+      },
+
+      process.env.JWT_SECRET,
+
+      {
+
+        expiresIn:
+          "8h"
+
+      }
+
+    );
+
+  }
+
+  async loginGoogle(
+    profile
+  ) {
+
+    return this.loginProvider(
+      "google",
+      profile
+    );
+
+  }
+
+  async loginMicrosoft(
+    profile
+  ) {
+
+    return this.loginProvider(
+      "microsoft",
+      profile
+    );
+
+  }
+
+  async loginProvider(
+
+    provider,
+
+    profile
+
+  ) {
+
+    /*
+     * Existing OAuth identity
+     */
+
+    let identity =
+      await UserRepository
+        .findIdentity(
+
+          provider,
+
+          profile.providerId
+
+        );
+
+    if (identity) {
+
+      const user =
+        await UserRepository
+          .findById(
+            identity.user_id
+          );
+
+      await UserRepository
+        .updateLastLogin(
+          user.id
+        );
+
+      return user;
+
+    }
+
+    /*
+     * Existing user match
+     */
+
+    const identityHash =
+      crypto
+        .createHash("sha256")
+        .update(
+
+          profile.email
+            .trim()
+            .toLowerCase()
+
+        )
+        .digest("hex");
+
+    let user =
+      await UserRepository
+        .findByIdentityHash(
+          identityHash
+        );
+
+    /*
+     * Create new user
+     */
+
+    if (!user) {
+
+      user =
+        await UserRepository
+          .createUser({
+
+            id:
+              crypto.randomUUID(),
+
+            email:
+              profile.email,
+
+            displayName:
+              profile.displayName,
+
+            role:
+              "Engineer",
+
+            identityHash
+
+          });
+
+    }
+
+    /*
+     * Link provider
+     */
+
+    await UserRepository
+      .createIdentity({
+
+        id:
+          crypto.randomUUID(),
+
+        userId:
+          user.id,
+
+        provider,
+
+        providerUserId:
+          profile.providerId,
+
+        providerEmail:
+          profile.email
+
+      });
+
+    await UserRepository
+      .updateLastLogin(
+        user.id
+      );
+
+    return user;
+
+  }
+
+  authorize(
+    minimumRole
+  ) {
+
+    return (
+      req,
+      res,
+      next
+    ) => {
+
+      if (
+        !req.user
+      ) {
+
+        return res
+          .status(401)
+          .json({
+
+            error:
+              "Unauthorized"
+
+          });
+
+      }
+
+      const userLevel =
+
+        ROLE_LEVELS[
+          req.user.role
+        ] || 0;
+
+      const requiredLevel =
+
+        ROLE_LEVELS[
+          minimumRole
+        ] || 0;
+
+      if (
+        userLevel <
+        requiredLevel
+      ) {
+
+        return res
+          .status(403)
+          .json({
+
+            error:
+              "Forbidden"
+
+          });
+
+      }
+
+      next();
+
+    };
+
+  }
+
+}
+
+module.exports =
+  new AuthService();

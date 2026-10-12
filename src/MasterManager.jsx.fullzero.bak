@@ -1,0 +1,631 @@
+import React,
+{
+  useEffect,
+  useState
+}
+from "react";
+
+import mirror
+from "./MirrorClient";
+
+import CanvasManager
+from "./CanvasManager";
+
+import DefaultProject
+from "./DefaultProject";
+
+import HistoryManager
+from "./HistoryManager";
+
+import ClipboardManager
+from "./ClipboardManager";
+
+import LoginPage
+from "./LoginPage";
+
+import FEAMain
+from "../FEAManagementService/src/FEAMain";
+
+import CanvasToolbar
+from "../FEAManagementService/src/CanvasToolbar";
+
+import LayersPanel
+from "../FEAManagementService/src/LayersPanel";
+
+import PropertiesPanel
+from "../FEAManagementService/src/PropertiesPanel";
+
+import {
+  renderCanvas
+}
+from "../FEAManagementService/src/CanvasRenderEngine";
+
+function MasterManager() {
+
+  const [project,
+    setProject] =
+      useState(DefaultProject);
+
+  const [canvas,
+    setCanvas] =
+      useState(null);
+
+  const [selectedNodeId,
+    setSelectedNodeId] =
+      useState(null);
+
+  const [lastSaved,
+    setLastSaved] =
+      useState(null);
+
+  const [authenticated,
+    setAuthenticated] =
+      useState(false);
+
+  const [authChecked,
+    setAuthChecked] =
+      useState(false);
+
+  /*
+   * Authentication
+   */
+
+  useEffect(() => {
+
+    async function checkAuth() {
+
+      try {
+
+        const response =
+          await fetch(
+            "/auth/me"
+          );
+
+        const data =
+          await response.json();
+
+        setAuthenticated(
+          !!data.authenticated
+        );
+
+      }
+      catch (error) {
+
+        console.error(
+          "Auth Check Failed",
+          error
+        );
+
+        setAuthenticated(
+          false
+        );
+
+      }
+      finally {
+
+        setAuthChecked(
+          true
+        );
+
+      }
+
+    }
+
+    checkAuth();
+
+  }, []);
+
+  /*
+   * Selected node
+   */
+
+  const selectedNode =
+
+    canvas?.nodes?.find(
+
+      node =>
+
+        node.id ===
+        selectedNodeId
+
+    );
+
+  /*
+   * Project subscription
+   */
+
+  useEffect(() => {
+
+    const unsubscribe =
+      mirror.subscribe(
+
+        "PROJECT_CHANGED",
+
+        message => {
+
+          if (
+            !message?.project
+          ) {
+            return;
+          }
+
+          setProject(
+            message.project
+          );
+
+        }
+
+      );
+
+    return unsubscribe;
+
+  }, []);
+
+  /*
+   * Load active canvas
+   */
+
+  useEffect(() => {
+
+    async function loadCanvas() {
+
+      if (
+        !project?.activeCanvasId
+      ) {
+        return;
+      }
+
+      try {
+
+        const response =
+          await fetch(
+
+            `/api/canvases/${project.activeCanvasId}`
+
+          );
+
+        const canvasData =
+          await response.json();
+
+        const renderedCanvas =
+          renderCanvas(
+            project,
+            canvasData
+          );
+
+        setCanvas(
+          renderedCanvas
+        );
+
+      }
+      catch (error) {
+
+        console.error(
+          "Canvas Load Failed",
+          error
+        );
+
+      }
+
+    }
+
+    loadCanvas();
+
+  }, [project]);
+
+  /*
+   * Canvas changed
+   */
+
+  const handleCanvasChange =
+    updatedCanvas => {
+
+      if (canvas) {
+
+        HistoryManager.save(
+          canvas
+        );
+
+      }
+
+      setCanvas(
+        updatedCanvas
+      );
+
+    };
+
+  /*
+   * Undo
+   */
+
+  const undoCanvas =
+    () => {
+
+      const previous =
+        HistoryManager.undo(
+          canvas
+        );
+
+      setCanvas(
+        previous
+      );
+
+    };
+
+  /*
+   * Redo
+   */
+
+  const redoCanvas =
+    () => {
+
+      const next =
+        HistoryManager.redo(
+          canvas
+        );
+
+      setCanvas(
+        next
+      );
+
+    };
+
+  /*
+   * Copy
+   */
+
+  const copyNode =
+    () => {
+
+      if (
+        !canvas ||
+        !selectedNodeId
+      ) {
+        return;
+      }
+
+      const node =
+        canvas.nodes.find(
+
+          n =>
+
+            n.id ===
+            selectedNodeId
+
+        );
+
+      if (!node) {
+        return;
+      }
+
+      ClipboardManager.copy(
+        node
+      );
+
+    };
+
+  /*
+   * Paste
+   */
+
+  const pasteNode =
+    () => {
+
+      const copied =
+        ClipboardManager.paste();
+
+      if (!copied) {
+        return;
+      }
+
+      const newNode = {
+
+        ...copied,
+
+        id: Date.now(),
+
+        x:
+          copied.x + 30,
+
+        y:
+          copied.y + 30
+
+      };
+
+      HistoryManager.save(
+        canvas
+      );
+
+      setCanvas({
+
+        ...canvas,
+
+        nodes: [
+
+          ...(canvas?.nodes || []),
+
+          newNode
+
+        ]
+
+      });
+
+      setSelectedNodeId(
+        newNode.id
+      );
+
+    };
+
+  /*
+   * Save
+   */
+
+  const saveCanvas =
+    async () => {
+
+      if (!canvas?.id) {
+        return;
+      }
+
+      try {
+
+        await fetch(
+
+          `/api/canvases/${canvas.id}`,
+
+          {
+
+            method: "PUT",
+
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
+
+            body:
+              JSON.stringify(
+                canvas
+              )
+
+          }
+
+        );
+
+        setLastSaved(
+          new Date()
+        );
+
+      }
+      catch (error) {
+
+        console.error(
+          "Save Failed",
+          error
+        );
+
+      }
+
+    };
+
+  /*
+   * Share
+   */
+
+  const shareProject =
+    () => {
+
+      if (!project?.id) {
+        return;
+      }
+
+      const shareUrl =
+
+        `${window.location.origin}/share/${project.id}`;
+
+      navigator.clipboard
+        .writeText(
+          shareUrl
+        );
+
+      alert(
+        "Share link copied to clipboard"
+      );
+
+    };
+
+  /*
+   * Autosave
+   */
+
+  useEffect(() => {
+
+    if (!canvas) {
+      return;
+    }
+
+    const timer =
+      setInterval(
+        saveCanvas,
+        30000
+      );
+
+    return () =>
+      clearInterval(
+        timer
+      );
+
+  }, [canvas]);
+
+  if (!authChecked) {
+
+    return (
+
+      <div
+        style={{
+          height: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center"
+        }}
+      >
+
+        Loading...
+
+      </div>
+
+    );
+
+  }
+
+  if (!authenticated) {
+
+    return (
+      <LoginPage />
+    );
+
+  }
+
+  return (
+
+    <div
+      style={{
+        display: "flex",
+        height: "100vh",
+        overflow: "hidden"
+      }}
+    >
+
+      <div
+        style={{
+          width: 260,
+          minWidth: 260,
+          display: "flex",
+          flexDirection: "column",
+          borderRight:
+            "1px solid #ddd"
+        }}
+      >
+
+        <FEAMain />
+
+        <LayersPanel
+          layers={
+            canvas?.layers || []
+          }
+        />
+
+      </div>
+
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          display: "flex",
+          flexDirection: "column"
+        }}
+      >
+
+        {canvas && (
+
+          <CanvasToolbar
+
+            canvas={canvas}
+
+            onUndo={
+              undoCanvas
+            }
+
+            onRedo={
+              redoCanvas
+            }
+
+            onCopy={
+              copyNode
+            }
+
+            onPaste={
+              pasteNode
+            }
+
+            onSave={
+              saveCanvas
+            }
+
+            onShare={
+              shareProject
+            }
+
+          />
+
+        )}
+
+        {lastSaved && (
+
+          <div
+            style={{
+              padding:
+                "8px 16px",
+              background:
+                "#F0FDF4",
+              color:
+                "#166534",
+              borderBottom:
+                "1px solid #D1FAE5"
+            }}
+          >
+
+            Last Saved:{" "}
+            {lastSaved.toLocaleTimeString()}
+
+          </div>
+
+        )}
+
+        <div
+          style={{
+            flex: 1,
+            overflow: "auto",
+            background:
+              "#F8FAFC"
+          }}
+        >
+
+          {canvas && (
+
+            <CanvasManager
+
+              canvas={canvas}
+
+              onCanvasChange={
+                handleCanvasChange
+              }
+
+              selectedNodeId={
+                selectedNodeId
+              }
+
+              onNodeSelected={
+                setSelectedNodeId
+              }
+
+            />
+
+          )}
+
+        </div>
+
+      </div>
+
+      <PropertiesPanel
+        selectedNode={
+          selectedNode
+        }
+      />
+
+    </div>
+
+  );
+
+}
+
+export default MasterManager;

@@ -1,0 +1,19 @@
+\i ../migrations/table-users_create.sql
+\i ../migrations/table-user_profiles_create.sql
+\i ../migrations/table-user_identities_create.sql
+\i ../migrations/table-projects_create.sql
+\i ../migrations/table-canvases_create.sql
+\i ../migrations/table-project_members_create.sql
+\i ../migrations/table-project_canvases_create.sql
+\i ../migrations/table-canvas_versions_create.sql
+\i ../migrations/table-canvas_share_links_create.sql
+
+\i ../procedures/trigger-updated_at.sql
+\i ../procedures/create_project.sql
+\i ../procedures/create_canvas.sql
+\i ../procedures/create_canvas_version.sql
+\i ../procedures/share_canvas.sql
+\i ../procedures/get_project_canvases.sql
+\i ../procedures/view_canvas_current_version.sql
+\i ../procedures/view_admin_project_canvases.sql
+#\i ../procedures/admin-or-shared_get_canvas_projects.sql

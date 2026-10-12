@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">FEASolver</string>
+    <string name="title_activity_main">FEASolver</string>
+    <string name="package_name">com.empselectronics.app</string>
+    <string name="custom_url_scheme">com.empselectronics.app</string>
+</resources>

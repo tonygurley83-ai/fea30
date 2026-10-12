@@ -1,0 +1,14 @@
+import React from "react";
+
+function CanvasManager({ canvas, onSave }) {
+  return (
+    <div style={{ padding: 20, height: "100%" }}>
+      <h2>{canvas.name}</h2>
+      <p>Canvas ID: {canvas.id}</p>
+      <pre>{JSON.stringify(canvas.canvasData || {}, null, 2)}</pre>
+      <button onClick={() => onSave?.({ updated: Date.now() })}>Save</button>
+    </div>
+  );
+}
+
+export default CanvasManager;

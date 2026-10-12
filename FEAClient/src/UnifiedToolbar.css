@@ -1,0 +1,58 @@
+/* UnifiedToolbar.css */
+.utb {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: #1e1f24;
+  border-bottom: 1px solid #33353c;
+  flex-wrap: wrap;
+  user-select: none;
+}
+
+.utb-title {
+  color: #c9ccd3;
+  font-size: 13px;
+  font-weight: 600;
+  max-width: 160px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 6px;
+}
+
+.utb-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #a8abb5;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.utb-btn:hover { background: #2e3038; color: #e8eaef; }
+.utb-btn--active { background: #3565d0; color: #fff; }
+.utb-btn:disabled { opacity: 0.35; cursor: default; }
+
+.utb-divider {
+  width: 1px;
+  height: 20px;
+  background: #3a3d45;
+  margin: 0 6px;
+}
+
+.utb-select {
+  height: 30px;
+  padding: 0 6px;
+  background: #2a2c33;
+  color: #d5d8de;
+  border: 1px solid #3a3d45;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}

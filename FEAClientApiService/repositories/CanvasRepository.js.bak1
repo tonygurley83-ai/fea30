@@ -1,0 +1,98 @@
+const db =
+  require("../server/egg/postgres");
+
+async function create(
+  userId,
+  data
+) {
+
+  const result =
+    await db.execute(
+      "create_canvas",
+      {
+        UserId:
+          userId,
+
+        Name:
+          data.name,
+
+        CanvasData:
+          data.canvasData,
+
+        ProjectId:
+          data.projectId || null
+      }
+    );
+
+  return result[0];
+
+}
+
+async function update(
+  userId,
+  canvas_id,
+  data
+) {
+
+  const result =
+    await db.execute(
+      "create_canvas_version",
+      {
+        CanvasId:
+          canvas_id,
+
+        Content:
+          data.canvasData
+      }
+    );
+
+  return result[0];
+
+}
+
+async function share(
+  canvas_id,
+  targetUserId,
+  permission
+) {
+
+  return db.execute(
+    "share_canvas",
+    {
+      CanvasId:
+        canvas_id,
+
+      UserId:
+        targetUserId,
+
+      Permission:
+        permission
+    }
+  );
+
+}
+
+async function remove(
+  userId,
+  canvas_id
+) {
+
+  return db.execute(
+    "delete_canvas",
+    {
+      CanvasId:
+        canvas_id,
+
+      UserId:
+        userId
+    }
+  );
+
+}
+
+module.exports = {
+  create,
+  update,
+  share,
+  delete: remove
+};

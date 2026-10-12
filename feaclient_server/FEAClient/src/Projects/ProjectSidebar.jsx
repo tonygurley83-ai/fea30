@@ -1,0 +1,119 @@
+import React from "react";
+
+function ProjectSidebar({
+  user,
+  projects = [],
+  personalCanvases = [],
+  sharedCanvases = [],
+  selectedProjectId,
+  selectedCanvasId,
+  onProjectSelected,
+  onProjectCanvasSelected,
+  onPersonalCanvasSelected,
+  onSharedCanvasSelected,
+  onCreateProject,
+  onRenameProject,
+  onDeleteProject,
+  onCreateCanvas,
+  onRenameCanvas,
+  onDeleteCanvas
+}) {
+  return (
+    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#fafafa" }}>
+      <div style={{ padding: 16, background: "#0F766E", color: "white" }}>
+        <div style={{ fontSize: 22, fontWeight: "bold" }}>Tectera Labs</div>
+        {user && (
+          <>
+            <div style={{ marginTop: 12, fontSize: 14 }}>{user.displayName}</div>
+            <div style={{ fontSize: 12, opacity: 0.8 }}>{user.email}</div>
+          </>
+        )}
+      </div>
+
+      <div style={{ padding: 8 }}>
+        <button onClick={() => onCreateProject?.()} style={{ width: "100%", padding: 10, cursor: "pointer" }}>
+          + New Project
+        </button>
+      </div>
+
+      <div style={{ flex: 1, overflowY: "auto" }}>
+
+        {/* PERSONAL */}
+        <div style={sectionStyle}>Personal Canvases</div>
+        <button onClick={() => onCreateCanvas?.("__personal__")} style={subBtnStyle}>+ Add Personal</button>
+        {personalCanvases.map(c => (
+          <CanvasItem key={c.id} canvas={c} isSelected={c.id === selectedCanvasId}
+            onSelect={() => onPersonalCanvasSelected?.(c)}
+            onRename={onRenameCanvas} onDelete={onDeleteCanvas} />
+        ))}
+
+        {/* SHARED */}
+        <div style={sectionStyle}>Shared With Me</div>
+        <button onClick={() => onCreateCanvas?.("__shared__")} style={subBtnStyle}>+ Add Shared</button>
+        {sharedCanvases.map(c => (
+          <CanvasItem key={c.id} canvas={c} isSelected={c.id === selectedCanvasId}
+            onSelect={() => onSharedCanvasSelected?.(c)}
+            onRename={onRenameCanvas} onDelete={onDeleteCanvas} />
+        ))}
+
+        {/* PROJECTS */}
+        <div style={sectionStyle}>Projects</div>
+        {projects.map(project => {
+          const isSelected = project.id === selectedProjectId;
+          return (
+            <div key={project.id}>
+              <div onClick={() => onProjectSelected?.(project)} style={{
+                padding: "10px 12px", cursor: "pointer", background: isSelected ? "#E0F2F1" : "transparent",
+                display: "flex", justifyContent: "space-between", alignItems: "center"
+              }}>
+                <div style={{ overflow: "hidden", paddingRight: 8, flex: 1 }}>
+                  <div style={{ fontWeight: isSelected ? "bold" : "normal", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    📁 {project.name}
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                  <button onClick={e => { e.stopPropagation(); onRenameProject?.(project, project.name); }} style={iconBtnStyle}>✏️</button>
+                  <button onClick={e => { e.stopPropagation(); onDeleteProject?.(project); }} style={iconBtnStyle}>🗑️</button>
+                </div>
+              </div>
+
+              {isSelected && (
+                <div style={{ paddingLeft: 16, background: "#f5f5f5" }}>
+                  <button onClick={() => onCreateCanvas?.(project)} style={subBtnStyle}>+ New Canvas</button>
+                  {project.canvases?.map(c => (
+                    <CanvasItem key={c.id} canvas={c} isSelected={c.id === selectedCanvasId}
+                      onSelect={() => onProjectCanvasSelected?.(c, project)}
+                      onRename={onRenameCanvas} onDelete={onDeleteCanvas} />
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function CanvasItem({ canvas, isSelected, onSelect, onRename, onDelete }) {
+  return (
+    <div onClick={onSelect} style={{
+      padding: "8px 12px", cursor: "pointer", background: isSelected ? "#B2DFDB" : "transparent",
+      display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13
+    }}>
+      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        🎨 {canvas.name}
+      </span>
+      <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+        <button onClick={e => { e.stopPropagation(); onRename?.(canvas, canvas.name); }} style={iconBtnStyle}>✏️</button>
+        <button onClick={e => { e.stopPropagation(); onDelete?.(canvas); }} style={iconBtnStyle}>🗑️</button>
+      </div>
+    </div>
+  );
+}
+
+const sectionStyle = { padding: "12px 12px 4px", fontWeight: "bold", fontSize: 11, color: "#555", textTransform: "uppercase" };
+const subBtnStyle = { width: "calc(100% - 16px)", margin: "4px 8px", padding: "4px", fontSize: 11, cursor: "pointer", background: "#fff", border: "1px dashed #0F766E", color: "#0F766E", borderRadius: 3 };
+const iconBtnStyle = { border: "none", background: "none", cursor: "pointer", fontSize: 12, padding: "2px 4px" };
+
+export default ProjectSidebar;
