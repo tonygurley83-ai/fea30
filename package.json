@@ -1,6 +1,7 @@
 {
   "name": "react-hot-experimental",
   "version": "1.0.0",
+  "homepage": "https://tonygurley83-ai.github.io/fea30",
   "description": "",
   "main": "./src/index",
   "keywords": [],
@@ -14,7 +15,7 @@
     "server": "node FEADataService/server.js",
     "api": "npm install --save-dev @babel/core@7.26.0 @babel/preset-env @babel/preset-react babel-loader --legacy-peer-deps && webpack-dev-server",
     "start": "npm run api",
-    "electron": "electron"
+    "deploy": "gh-pages -d dist"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.0",
@@ -42,6 +43,7 @@
     "@hot-loader/react-dom": "17.0.1",
     "babel-loader": "^9.2.1",
     "concurrently": "^9.2.1",
+    "gh-pages": "^6.3.0",
     "webpack": "^5.109.2",
     "webpack-cli": "5.1.4",
     "webpack-dev-server": "^6.0.0"
